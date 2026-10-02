@@ -122,24 +122,17 @@ export const DEMO_REFERENCE_ANALYSIS: ReferenceAnalysis = {
 };
 
 export const DEMO_VALIDATION_PERFECT: ValidationResult = {
-  score: 97,
-  status: "pass",
-  checks: {
-    shape: 98,
-    color: 96,
-    material: 97,
-    logo: 95,
-    components: 98,
-    proportions: 99,
-    heel: 98,
-  },
+  score: null,
+  status: "unverified",
+  checks: {},
   notes: [
-    "Square chisel-toe silhouette faithfully maintained with zero morphing.",
+    "Square chisel-toe silhouette faithfully maintained with zero morphing (Simulated Demo).",
     "85mm hourglass flared heel height, angle, and thickness confirmed within ±1.5% tolerance.",
     "Champagne gold dual-arch buckle preserved in position and metallic finish.",
     "Natural nappa micro-pebble texture correctly rendered under studio lighting.",
   ],
   validatedAt: new Date().toISOString(),
+  isFallback: true,
 };
 
 export const DEMO_OUTPUTS: GeneratedOutput[] = [

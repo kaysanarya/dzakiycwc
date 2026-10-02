@@ -123,34 +123,15 @@ export class DemoAIProvider implements AIProvider {
       // Returns authentic studio render templates with blueprint mapping.
       const finalImageUrl = template.imageUrl;
 
-      // Calculate realistic consistency based on active locks & preservation settings
-      let consistencyScore = 96;
-      if (!input.locks.lockShape) consistencyScore -= 12;
-      if (!input.locks.lockColor) consistencyScore -= 8;
-      if (!input.locks.lockMaterial) consistencyScore -= 6;
-      if (!input.preservation.strictProductMode) consistencyScore -= 4;
-      consistencyScore = Math.max(70, Math.min(99, consistencyScore));
-
       const validation: ValidationResult = {
-        score: consistencyScore,
-        status: consistencyScore >= 90 ? "pass" : "needs_regeneration",
-        checks: {
-          shape: input.locks.lockShape ? 98 : 82,
-          color: input.locks.lockColor ? 97 : 85,
-          material: input.locks.lockMaterial ? 96 : 84,
-          logo: input.locks.lockLogo ? 95 : 80,
-          components: 97,
-          proportions: input.locks.lockProportion ? 98 : 83,
-          heel: input.blueprint.category === "footwear" ? 98 : undefined,
-        },
+        score: null,
+        status: "unverified",
+        checks: {},
         notes: [
           sourceImg
-            ? "Studio Engine: Foto produk asli Anda berhasil di-render ke setting studio komersial."
+            ? "Simulasi Demo: Pratinjau template menggunakan aset ilustrasi, bukan hasil inferensi AI langsung."
             : "Demo Asset Loaded",
-          input.preservation.strictProductMode
-            ? "Strict Product Lock: Geometri & detail produk asli 100% dipertahankan tanpa perubahan."
-            : "Creative variance diizinkan pada pencahayaan dan komposisi backdrop.",
-          "Verifikasi konsistensi fitur fisik produk lolos standar e-commerce.",
+          "Audit visual dilewati (mode demonstrasi).",
         ],
         validatedAt: new Date().toISOString(),
         isFallback: true,
@@ -163,13 +144,7 @@ export class DemoAIProvider implements AIProvider {
         prompt: promptData.generationPrompt,
         angle: angleName,
         consistencyScore: null,
-        validation: {
-          ...validation,
-          score: null,
-          status: "unverified",
-          isFallback: true,
-          notes: ["Simulasi Demo: Output ilustrasi pratinjau, bukan hasil AI asli."],
-        },
+        validation,
         status: "passed",
         createdAt: new Date().toISOString(),
         aspectRatio: input.direction.aspectRatio,
@@ -184,23 +159,15 @@ export class DemoAIProvider implements AIProvider {
   async validateProductConsistency(
     input: ValidateConsistencyInput
   ): Promise<ValidationResult> {
-    await delay(700);
+    void input;
+    await delay(300);
 
     return {
-      score: 96,
-      status: "pass",
-      checks: {
-        shape: input.locks.lockShape ? 98 : 84,
-        color: input.locks.lockColor ? 97 : 86,
-        material: input.locks.lockMaterial ? 96 : 85,
-        logo: input.locks.lockLogo ? 95 : 82,
-        components: 96,
-        proportions: input.locks.lockProportion ? 98 : 84,
-        heel: input.blueprint.category === "footwear" ? 98 : undefined,
-      },
+      score: null,
+      status: "unverified",
+      checks: {},
       notes: [
-        "DEMO MODE — AI API NOT CONNECTED",
-        "Visual validation computed using structured constraint verification.",
+        "Simulasi Demo: Mode demo tidak menjalankan audit konsistensi visual multimodal.",
       ],
       validatedAt: new Date().toISOString(),
       isFallback: true,

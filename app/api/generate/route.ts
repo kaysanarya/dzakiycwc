@@ -41,8 +41,9 @@ export async function POST(req: NextRequest) {
       count?: number;
     };
 
-    // Resolve provider & API key from server environment (BYOK via env vars, no client key needed)
+    // Resolve provider & API key (BYOK from request header x-api-key with server env fallback)
     const validation = validateApiKeyAndProvider(req, {});
+
     if (!validation.allowed) {
       return NextResponse.json(
         { success: false, error: { stage: "auth", message: validation.error } },

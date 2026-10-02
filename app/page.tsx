@@ -37,7 +37,8 @@ import {
   DEMO_OUTPUTS,
 } from "@/lib/ai/demoData";
 
-import { Sparkles, Play, Camera, AlertTriangle, ArrowRight } from "lucide-react";
+import { Sparkles, Play, Camera, AlertTriangle, ArrowRight, KeyRound } from "lucide-react";
+import { ApiSettingsModal, type ApiCredentials } from "@/components/api-settings/ApiSettingsModal";
 
 const INITIAL_STEPS: AgentStep[] = [
   { id: 1, key: "analyze_product", title: "Analyze Raw Product", description: "Multi-angle visual inspection of geometry and materials", status: "pending" },
@@ -73,7 +74,7 @@ const DEFAULT_LOCKS: ProductLocksType = {
 };
 
 export default function Home() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // Visual Assets
   const [sourceImages, setSourceImages] = useState<UploadedImage[]>([]);
@@ -128,6 +129,51 @@ export default function Home() {
   const [isBlueprintModalOpen, setIsBlueprintModalOpen] = useState(false);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [isConceptArtOpen, setIsConceptArtOpen] = useState(false);
+  const [isApiSettingsOpen, setIsApiSettingsOpen] = useState(false);
+
+  // BYOK Credentials State (persisted in browser storage)
+  const [apiCredentials, setApiCredentials] = useState<ApiCredentials | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = localStorage.getItem("vellum_api_credentials") || sessionStorage.getItem("vellum_api_credentials");
+      return saved ? (JSON.parse(saved) as ApiCredentials) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleSaveCredentials = (creds: ApiCredentials | null, remember?: boolean) => {
+    setApiCredentials(creds);
+    try {
+      if (creds) {
+        sessionStorage.setItem("vellum_api_credentials", JSON.stringify(creds));
+        if (remember) {
+          localStorage.setItem("vellum_api_credentials", JSON.stringify(creds));
+          localStorage.setItem("vellum_remember_credentials", "true");
+        } else {
+          localStorage.removeItem("vellum_api_credentials");
+          localStorage.removeItem("vellum_remember_credentials");
+        }
+      } else {
+        sessionStorage.removeItem("vellum_api_credentials");
+        localStorage.removeItem("vellum_api_credentials");
+        localStorage.removeItem("vellum_remember_credentials");
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const getAuthHeaders = (): Record<string, string> => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (apiCredentials?.apiKey) {
+      headers["x-api-key"] = apiCredentials.apiKey;
+      headers["x-provider"] = apiCredentials.provider;
+    }
+    return headers;
+  };
   const [historyItems, setHistoryItems] = useState<GenerationHistoryItem[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -308,7 +354,7 @@ export default function Home() {
 
         const analyzeRes = await fetch("/api/analyze", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           signal,
           body: JSON.stringify({
             images: sourceImages,
@@ -334,7 +380,7 @@ export default function Home() {
         try {
           const bpRes = await fetch("/api/blueprint", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             signal,
             body: JSON.stringify({
               images: sourceImages,
@@ -381,7 +427,7 @@ export default function Home() {
 
       const genRes = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         signal,
         body: JSON.stringify({
           blueprint: currentBlueprint,
@@ -431,7 +477,7 @@ export default function Home() {
           try {
             const valRes = await fetch("/api/validate", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: getAuthHeaders(),
               signal,
               body: JSON.stringify({
                 sourceImages,
@@ -476,7 +522,7 @@ export default function Home() {
           try {
             const regenRes = await fetch("/api/generate", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: getAuthHeaders(),
               signal,
               body: JSON.stringify({
                 blueprint: currentBlueprint,
@@ -511,7 +557,7 @@ export default function Home() {
                 try {
                   const valRes = await fetch("/api/validate", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: getAuthHeaders(),
                     signal,
                     body: JSON.stringify({
                       sourceImages,
@@ -637,7 +683,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           blueprint,
           locks,
@@ -688,6 +734,9 @@ export default function Home() {
       <Header
         onLoadDemoProduct={handleLoadDemoProduct}
         onOpenHistory={() => setIsHistoryDrawerOpen(true)}
+        onOpenApiSettings={() => setIsApiSettingsOpen(true)}
+        hasApiKey={Boolean(apiCredentials?.apiKey)}
+        activeProviderName={apiCredentials?.provider}
         historyCount={historyItems.length}
       />
 
@@ -856,6 +905,27 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* Demo Mode Notice before generate (Fase 1) */}
+                {!apiCredentials?.apiKey && (
+                  <div className="w-full sm:max-w-md p-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-200 flex items-center justify-between gap-3 text-xs shadow-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <KeyRound className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="truncate">
+                        {language === "id"
+                          ? "Mode demo: masukkan API key untuk hasil asli"
+                          : "Demo mode: enter API key for authentic results"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsApiSettingsOpen(true)}
+                      className="px-3 py-1 text-[11px] font-bold rounded-full bg-amber-500 hover:bg-amber-400 text-black shrink-0 cursor-pointer transition-all active:scale-95"
+                    >
+                      {language === "id" ? "Atur Key" : "Set Key"}
+                    </button>
+                  </div>
+                )}
+
                 {/* 2. Main Centered Hero Button: Run Agent */}
                 <button
                   type="button"
@@ -910,16 +980,13 @@ export default function Home() {
                 : "Gambar dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat.";
 
               return (
-                <div className="p-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 backdrop-blur-md text-amber-200 flex items-start gap-3 shadow-lg">
-                  <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-amber-300 flex items-center gap-2">
-                      <span>Peringatan: Generasi Degraded</span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-200">
-                        {generatedOutputs.filter((o) => o.degraded).length} / {generatedOutputs.length} GAMBAR
-                      </span>
-                    </h4>
-                    <p className="text-xs text-amber-200/80 leading-relaxed">
+                <div className="p-2.5 sm:p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 backdrop-blur-md text-amber-200 flex items-center gap-2.5 shadow-md">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] sm:text-xs text-amber-200/90 leading-snug line-clamp-2">
+                      <strong className="font-semibold text-amber-300">
+                        Degraded ({generatedOutputs.filter((o) => o.degraded).length}/{generatedOutputs.length}):{" "}
+                      </strong>
                       {degradedMsg}
                     </p>
                   </div>
@@ -966,6 +1033,14 @@ export default function Home() {
       <ConceptArtGenerator
         isOpen={isConceptArtOpen}
         onClose={() => setIsConceptArtOpen(false)}
+      />
+
+      {/* BYOK API Key Settings Modal */}
+      <ApiSettingsModal
+        isOpen={isApiSettingsOpen}
+        onClose={() => setIsApiSettingsOpen(false)}
+        onSaveCredentials={handleSaveCredentials}
+        currentCredentials={apiCredentials}
       />
     </div>
   );

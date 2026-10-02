@@ -266,7 +266,57 @@ export function validateApiKeyAndProvider(
     };
   }
 
-  // Main pipeline: resolve provider & key from server environment
+  // 1. Check client-provided BYOK headers first
+  const clientKey = req.headers.get("x-api-key")?.trim();
+  const rawClientProv = req.headers.get("x-provider")?.trim() || options.provider;
+  const clientProvider = rawClientProv ? rawClientProv.toLowerCase() : undefined;
+
+  if (clientKey) {
+    const prov = clientProvider || "stability";
+    if (!ALLOWED_PIPELINE_PROVIDERS.includes(prov as AllowedPipelineProvider)) {
+      return {
+        allowed: false,
+        status: 400,
+        error: `Provider AI tidak sah: "${prov}". Provider yang diizinkan: ${ALLOWED_PIPELINE_PROVIDERS.join(", ")}`,
+        provider: prov,
+        isDemo: false,
+      };
+    }
+
+    if (prov === "demo") {
+      return {
+        allowed: true,
+        provider: "demo",
+        isDemo: true,
+      };
+    }
+
+    // Validate key format for chosen provider
+    let isValid = false;
+    if (prov === "stability") isValid = isValidStabilityKey(clientKey);
+    else if (prov === "replicate") isValid = isValidReplicateKey(clientKey);
+    else if (prov === "openai") isValid = isValidOpenAiKey(clientKey);
+    else if (prov === "gemini") isValid = isValidGeminiKey(clientKey);
+
+    if (!isValid) {
+      return {
+        allowed: false,
+        status: 400,
+        error: `Format API key untuk provider ${prov} tidak sah. Harap periksa kembali di Pengaturan API Key.`,
+        provider: prov,
+        isDemo: false,
+      };
+    }
+
+    return {
+      allowed: true,
+      apiKey: clientKey,
+      provider: prov,
+      isDemo: false,
+    };
+  }
+
+  // 2. Fallback to server-side environment variables
   const resolvedProvider = resolveServerProvider();
   const resolvedApiKey = resolveServerApiKey(resolvedProvider);
 

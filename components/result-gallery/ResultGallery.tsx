@@ -54,6 +54,11 @@ export function ResultGallery({
   const [isErasing, setIsErasing] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [retouchNotice, setRetouchNotice] = useState<string | null>(null);
+  const [expandedPromptIds, setExpandedPromptIds] = useState<Record<string, boolean>>({});
+
+  const togglePromptExpand = (id: string) => {
+    setExpandedPromptIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Inpaint Canvas Ref
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -278,87 +283,111 @@ export function ResultGallery({
         </div>
       </div>
 
-      {/* 2x2 Desktop Grid (Requirement 14: Grid 2x2 untuk 4 gambar hasil) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Banner Ringkas Demo / Degraded di atas Galeri (Requirement h: <= 2 baris mobile) */}
+      {outputs.some((o) => o.method === "demo" || o.imageUrl.includes("/demo/") || o.imageUrl.endsWith(".svg")) ? (
+        <div className="p-2.5 sm:p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-200 text-xs flex items-center gap-2.5">
+          <Info className="w-4 h-4 text-purple-400 shrink-0" />
+          <p className="text-[11px] sm:text-xs leading-snug line-clamp-2">
+            <strong className="text-purple-300 font-semibold">Mode Simulasi Demo: </strong>
+            {language === "id"
+              ? "Hasil pratinjau simulasi demo. Masukkan API key di menu Pengaturan Key untuk hasil produk asli."
+              : "Preview demo simulation. Configure your API key in Key Settings for authentic generation."}
+          </p>
+        </div>
+      ) : outputs.some((o) => o.degraded) ? (
+        <div className="p-2.5 sm:p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <p className="text-[11px] sm:text-xs leading-snug line-clamp-2">
+            <strong className="text-amber-300 font-semibold">Generasi Degraded: </strong>
+            {language === "id"
+              ? "Dihasilkan tanpa foto produk asli; detail fisik produk mungkin tidak akurat."
+              : "Generated without raw product photos; physical details may not be accurate."}
+          </p>
+        </div>
+      ) : null}
+
+      {/* Container-Based Responsive Grid (Requirement f: auto-fit minmax ~280px) */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))] gap-4 sm:gap-5 w-full">
         {outputs.map((out, idx) => {
           const isUpscaled = Boolean(upscaledIds[out.id]);
           const isBgRemoved = Boolean(removedBgIds[out.id]);
+          const isPromptExpanded = Boolean(expandedPromptIds[out.id]);
+          const isDemo = out.method === "demo" || out.imageUrl.includes("/demo/") || out.imageUrl.endsWith(".svg");
 
           return (
             <div
               key={out.id}
-              className="liquid-glass-card overflow-hidden flex flex-col justify-between group border border-white/[0.08] hover:border-white transition-all shadow-[0_16px_36px_rgba(15,60,130,0.1)]"
+              className="liquid-glass-card rounded-2xl overflow-hidden flex flex-col justify-between group border border-white/[0.08] hover:border-white/20 transition-all shadow-[0_16px_36px_rgba(15,60,130,0.1)] min-w-0 max-w-full"
             >
               {/* Image Preview Canvas */}
               <div
-                className={`relative aspect-square w-full overflow-hidden flex items-center justify-center backdrop-blur-xs transition-colors ${isBgRemoved
+                className={`relative aspect-square w-full overflow-hidden flex items-center justify-center backdrop-blur-xs transition-colors ${
+                  isBgRemoved
                     ? "bg-[conic-gradient(#e2e8f0_90deg,#cbd5e1_90deg_180deg,#e2e8f0_180deg_270deg,#cbd5e1_270deg)] bg-[size:16px_16px]"
                     : "bg-white/[0.025]"
-                  }`}
+                }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={out.imageUrl}
                   alt={out.angle}
-                  className={`w-full h-full object-contain p-2 group-hover:scale-[1.02] transition-all duration-300 ${isUpscaled ? "filter contrast-110 saturate-105" : ""
-                    }`}
+                  className={`w-full h-full object-contain p-2 group-hover:scale-[1.02] transition-all duration-300 ${
+                    isUpscaled ? "filter contrast-110 saturate-105" : ""
+                  }`}
                 />
 
-                {/* Status and Angle Badges */}
-                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 pointer-events-none">
-                  <span className="text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded-md bg-[#00030a]/80 text-white backdrop-blur-md border border-white/20">
+                {/* Sudut Overlay: Maksimal 2 badge kecil (VAR_n kiri atas, status singkat kanan atas) (Requirement c & g) */}
+                <div className="absolute top-2.5 left-2.5 pointer-events-none">
+                  <span className="text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded-md bg-[#00030a]/80 text-white backdrop-blur-md border border-white/20 shadow-xs">
                     VAR_{idx + 1}
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#00030a]/70 text-[#3781fc]/50 backdrop-blur-md border border-white/10">
-                    {out.angle}
-                  </span>
-                  {(out.method === "demo" || out.imageUrl.includes("/demo/") || out.imageUrl.endsWith(".svg")) ? (
+                </div>
+
+                <div className="absolute top-2.5 right-2.5 pointer-events-auto">
+                  {isDemo ? (
                     <span
-                      title="Output demonstrasi/pratinjau (aset simulasi, bukan hasil AI asli)"
-                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-600 text-white border border-indigo-400 flex items-center gap-1 shadow-xs pointer-events-auto"
+                      title="Aset simulasi demo pratinjau, bukan hasil AI asli"
+                      className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-purple-600/90 text-white border border-purple-400/50 backdrop-blur-md shadow-xs inline-flex items-center gap-1"
                     >
-                      <Info className="w-3 h-3 text-indigo-200" />
-                      <span>DEMO SIMULASI</span>
+                      <Info className="w-3 h-3 text-purple-200" />
+                      <span>DEMO</span>
                     </span>
                   ) : out.degraded ? (
                     <span
                       title={
                         out.method === "stability-core" || out.method === "replicate-flux"
-                          ? "Fallback inpaint: dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat"
+                          ? "Fallback: dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat"
                           : "Dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat"
                       }
-                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500 text-black border border-amber-400 flex items-center gap-1 shadow-xs pointer-events-auto"
+                      className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-amber-500 text-black border border-amber-400 backdrop-blur-md shadow-xs inline-flex items-center gap-1"
                     >
                       <AlertTriangle className="w-3 h-3 text-black" />
-                      <span>DEGRADED ({out.method || "fallback"})</span>
+                      <span>DEGRADED</span>
                     </span>
                   ) : out.method === "stability-sd3-img2img" ? (
                     <span
-                      title="Metode Image-to-Image: memakai foto produk asli sebagai panduan difusi (presisi parsial)"
-                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-600/80 text-white border border-blue-400/40 flex items-center gap-1 shadow-xs pointer-events-auto"
+                      title="Metode SD3 Image-to-Image: memakai foto produk sebagai panduan difusi (presisi parsial)"
+                      className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-blue-600/90 text-white border border-blue-400/50 backdrop-blur-md shadow-xs"
                     >
-                      <span>SD3 IMG2IMG (PARSIAL)</span>
+                      PARSIAL
                     </span>
-                  ) : null}
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded backdrop-blur-xs ${
-                      out.consistencyScore === null
-                        ? "bg-slate-700/80 text-slate-200 border border-slate-600"
-                        : out.consistencyScore >= 90
-                        ? "bg-emerald-700/90 text-white"
-                        : "bg-amber-600/90 text-white"
-                    }`}
-                  >
-                    {out.consistencyScore === null ? "UNVERIFIED" : `${out.consistencyScore}% Match`}
-                  </span>
-                  {isUpscaled && (
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#1951fc] text-white shadow-xs">
-                      HD 4K
+                  ) : out.consistencyScore !== null ? (
+                    <span
+                      title={`Konsistensi produk terverifikasi: ${out.consistencyScore}%`}
+                      className={`text-[10px] font-bold font-mono tracking-wider px-2 py-0.5 rounded-md backdrop-blur-md border shadow-xs ${
+                        out.consistencyScore >= 90
+                          ? "bg-emerald-600/90 text-white border-emerald-400/50"
+                          : "bg-amber-600/90 text-white border-amber-400/50"
+                      }`}
+                    >
+                      {out.consistencyScore}%
                     </span>
-                  )}
-                  {isBgRemoved && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-600/80 text-white border border-purple-400/40 shadow-xs">
-                      [Preview] Matting Simulasi
+                  ) : (
+                    <span
+                      title="Konsistensi produk belum diverifikasi secara otomatis"
+                      className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-slate-700/90 text-slate-200 border border-slate-600 backdrop-blur-md shadow-xs"
+                    >
+                      UNVERIFIED
                     </span>
                   )}
                 </div>
@@ -370,14 +399,16 @@ export function ResultGallery({
                     onClick={() => setPreviewOutput(out)}
                     className="p-2 rounded-full bg-[#0c101d]/90 text-white border border-white/20 hover:bg-[#1951fc] hover:border-[#3781fc] shadow-md transition-all cursor-pointer"
                     title="Fullscreen Preview"
+                    aria-label="Fullscreen Preview"
                   >
                     <Eye className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setComparingOutput(out)}
-                    className="p-2 rounded-full bg-[#0c101d]/90 text-amber-400 border border-white/20 hover:bg-amber-500/20 hover:border-amber-400 shadow-md transition-all cursor-pointer"
-                    title="Compare with Raw Product"
+                    className="p-2 rounded-full bg-[#0c101d]/90 text-sky-300 border border-white/20 hover:bg-sky-500/20 hover:border-sky-400 shadow-md transition-all cursor-pointer"
+                    title={language === "id" ? "Bandingkan dengan Foto Mentahan" : "Compare with Raw Product"}
+                    aria-label="Compare with Raw Product"
                   >
                     <SplitSquareVertical className="w-4 h-4" />
                   </button>
@@ -387,6 +418,7 @@ export function ResultGallery({
                     disabled={downloadingId === out.id || downloadingId === "all"}
                     className="p-2 rounded-full bg-[#0c101d]/90 text-white border border-white/20 hover:bg-[#1951fc] hover:border-[#3781fc] shadow-md transition-all cursor-pointer disabled:opacity-50"
                     title={downloadingId === out.id ? "Downloading..." : "Download Image"}
+                    aria-label="Download Image"
                   >
                     {downloadingId === out.id ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -397,117 +429,182 @@ export function ResultGallery({
                 </div>
               </div>
 
-              {/* Consistency Breakdown */}
-              <div className="p-3.5 space-y-3">
-                <ConsistencyBadge validation={out.validation} threshold={90} />
-
-                {/* Degradation/Demo Notice in Card */}
-                {out.method === "demo" ? (
-                  <p className="text-[10px] text-indigo-200/90 bg-indigo-500/10 border border-indigo-400/20 rounded-lg p-2 leading-tight flex items-start gap-1.5">
-                    <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
-                    <span>Simulasi pratinjau: aset demonstrasi contoh, bukan hasil model AI asli.</span>
-                  </p>
-                ) : out.degraded ? (
-                  <p className="text-[10px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 leading-tight flex items-start gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                    <span>
-                      {out.method === "stability-core" || out.method === "replicate-flux"
-                        ? "Fallback inpainting: dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat."
-                        : "Dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat."}
-                    </span>
-                  </p>
-                ) : null}
-
-                {/* POST-PROCESSING BAR (Requirement 14: Upscale HD, Remove Background, Magic Retouch) */}
-                <div className="pt-2 border-t border-white/[0.06] flex flex-wrap items-center gap-1.5 justify-between">
-                  <button
-                    type="button"
-                    onClick={() => handleUpscale(out.id)}
-                    className={`flex-1 py-1.5 px-2 text-[10px] font-bold rounded-lg border transition-all flex items-center justify-center gap-1 cursor-pointer ${isUpscaled
-                        ? "bg-[#1951fc] text-white border-[#3781fc] shadow-2xs"
-                        : "liquid-glass-btn text-white border-white/[0.08] hover:bg-white/[0.08]"
-                      }`}
-                    title="Super-resolution 4K HD upscaling"
+              {/* Caption Di Bawah Gambar: Nama variasi & aspect ratio (Requirement c & d) */}
+              <div className="px-3.5 pt-3 pb-2 flex items-center justify-between gap-2 border-b border-white/[0.04] min-w-0">
+                <div className="min-w-0 flex-1">
+                  <h4
+                    className="text-xs font-bold text-white tracking-wide uppercase truncate"
+                    title={out.angle}
                   >
-                    <Sparkles className="w-3 h-3 text-amber-500" />
-                    <span>{isUpscaled ? "HD Aktif ✓" : "Upscale (HD)"}</span>
-                  </button>
+                    {out.angle}
+                  </h4>
+                </div>
+                <span className="text-[10px] font-mono text-white/50 shrink-0 px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
+                  {out.aspectRatio || "1:1"}
+                </span>
+              </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveBg(out.id)}
-                    className={`flex-1 py-1.5 px-2 text-[10px] font-bold rounded-lg border transition-all flex items-center justify-center gap-1 cursor-pointer ${isBgRemoved
-                        ? "bg-purple-600 text-white border-purple-500 shadow-2xs"
-                        : "liquid-glass-btn text-white border-white/[0.08] hover:bg-white/[0.08]"
-                      }`}
-                    title={
-                      language === "id"
-                        ? "Pratinjau latar papan catur. Pembuangan latar belakang penuh memerlukan API AI Matting."
-                        : "Preview checkerboard background. Full background cutout requires an AI Matting API."
-                    }
-                  >
-                    <Scissors className="w-3 h-3 text-purple-400" />
-                    <span>{isBgRemoved ? "Simulasi BG ✓" : "Remove Background"}</span>
-                  </button>
+              {/* Card Body: Prompt, Consistency, Alerts, Action Buttons (Requirement a, b, d, e) */}
+              <div className="p-3.5 space-y-3 min-w-0 flex-1 flex flex-col justify-between">
+                <div className="space-y-2.5 min-w-0">
+                  {/* Prompt with line-clamp-2 and toggle (Requirement a) */}
+                  {out.prompt && (
+                    <div className="min-w-0 text-[11px] text-white/70">
+                      <p
+                        className={`break-words leading-relaxed ${
+                          isPromptExpanded ? "" : "line-clamp-2"
+                        }`}
+                        title={out.prompt}
+                      >
+                        <span className="font-semibold text-white/90">Prompt: </span>
+                        {out.prompt}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => togglePromptExpand(out.id)}
+                        className="text-[10px] font-medium text-sky-400 hover:text-sky-300 mt-0.5 underline cursor-pointer inline-block"
+                      >
+                        {isPromptExpanded
+                          ? language === "id"
+                            ? "Ringkas"
+                            : "Show less"
+                          : language === "id"
+                          ? "Selengkapnya"
+                          : "Show more"}
+                      </button>
+                    </div>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRetouchTarget(out);
-                      setRetouchNotice(null);
-                    }}
-                    className="py-1.5 px-2.5 text-[10px] font-bold rounded-lg border liquid-glass-btn text-amber-300 border-amber-400/30 hover:bg-amber-500/10 flex items-center gap-1 cursor-pointer"
-                    title="Magic Retouch (Prototype Inpainting Canvas)"
-                  >
-                    <Wand2 className="w-3 h-3 text-amber-400" />
-                    <span>Magic Retouch</span>
-                  </button>
+                  {/* Consistency Breakdown Panel */}
+                  <ConsistencyBadge validation={out.validation} threshold={90} />
+
+                  {/* Inline Demo / Degraded Alert */}
+                  {isDemo ? (
+                    <p className="text-[10px] text-purple-200/90 bg-purple-500/10 border border-purple-400/20 rounded-lg p-2 leading-tight flex items-start gap-1.5 break-words min-w-0">
+                      <Info className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
+                      <span>Simulasi pratinjau: aset demonstrasi contoh, bukan hasil model AI asli.</span>
+                    </p>
+                  ) : out.degraded ? (
+                    <p className="text-[10px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 leading-tight flex items-start gap-1.5 break-words min-w-0">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                      <span>
+                        {out.method === "stability-core" || out.method === "replicate-flux"
+                          ? "Fallback inpainting: dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat."
+                          : "Dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat."}
+                      </span>
+                    </p>
+                  ) : null}
                 </div>
 
-                {/* Action Toolbar on Card */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                  <div className="flex items-center gap-2">
+                <div className="pt-2.5 space-y-2 border-t border-white/[0.06] mt-2">
+                  {/* Grid 2 Kolom Tombol Aksi Utama (Requirement e: tinggi seragam h-9, truncate with title) */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {/* 1. Upscale */}
+                    <button
+                      type="button"
+                      onClick={() => handleUpscale(out.id)}
+                      className={`h-9 px-2 text-[11px] font-semibold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate ${
+                        isUpscaled
+                          ? "bg-[#1951fc] text-white border-[#3781fc] shadow-xs"
+                          : "liquid-glass-btn text-white/90 border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                      }`}
+                      title="Super-resolution 4K HD upscaling"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">{isUpscaled ? "HD Aktif ✓" : "Upscale HD"}</span>
+                    </button>
+
+                    {/* 2. Remove Background */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveBg(out.id)}
+                      className={`h-9 px-2 text-[11px] font-semibold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer truncate ${
+                        isBgRemoved
+                          ? "bg-purple-600 text-white border-purple-500 shadow-xs"
+                          : "liquid-glass-btn text-white/90 border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                      }`}
+                      title={
+                        language === "id"
+                          ? "Pratinjau latar papan catur. Pembuangan latar belakang penuh memerlukan API AI Matting."
+                          : "Preview checkerboard background. Full background cutout requires an AI Matting API."
+                      }
+                    >
+                      <Scissors className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                      <span className="truncate">{isBgRemoved ? "Simulasi BG ✓" : "Remove BG"}</span>
+                    </button>
+
+                    {/* 3. Magic Retouch */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRetouchTarget(out);
+                        setRetouchNotice(null);
+                      }}
+                      className="h-9 px-2 text-[11px] font-semibold rounded-lg border liquid-glass-btn text-amber-300 border-amber-400/30 hover:bg-amber-500/10 flex items-center justify-center gap-1.5 cursor-pointer truncate"
+                      title="Magic Retouch (Prototype Inpainting Canvas)"
+                    >
+                      <Wand2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">Magic Retouch</span>
+                    </button>
+
+                    {/* 4. Compare with Source (WCAG AA compliant contrast) */}
                     <button
                       type="button"
                       onClick={() => setComparingOutput(out)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 hover:underline cursor-pointer"
+                      className="h-9 px-2 text-[11px] font-semibold rounded-lg border liquid-glass-btn text-sky-300 border-sky-400/30 hover:bg-sky-500/10 flex items-center justify-center gap-1.5 cursor-pointer truncate"
+                      title={language === "id" ? "Bandingkan dengan foto produk asli" : "Compare with original raw product"}
                     >
-                      <SplitSquareVertical className="w-3.5 h-3.5" />
-                      <span>Compare with Source</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleCopyPrompt(out.id, out.prompt)}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-white/60 hover:text-white cursor-pointer"
-                    >
-                      {copiedId === out.id ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5" />
-                      )}
-                      <span>{copiedId === out.id ? "Copied" : "Copy Prompt"}</span>
+                      <SplitSquareVertical className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                      <span className="truncate">{language === "id" ? "Komparasi" : "Compare"}</span>
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-1">
+                  {/* Secondary Actions Row: Area klik min 40px, label aksesibel (aria-label) (Requirement e) */}
+                  <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                    {/* Copy Prompt */}
                     <button
                       type="button"
-                      onClick={() => onRegenerateSingle(out.id)}
-                      disabled={isGenerating}
-                      className="p-1.5 rounded text-white/60 hover:text-white hover:bg-white/[0.02] transition-colors cursor-pointer"
-                      title="Regenerate this angle"
+                      onClick={() => handleCopyPrompt(out.id, out.prompt)}
+                      aria-label="Copy generation prompt"
+                      className="min-h-[40px] px-2.5 rounded-lg inline-flex items-center gap-1.5 text-xs font-medium text-white/70 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer"
+                      title="Copy prompt text"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
+                      {copiedId === out.id ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-400" />
+                          <span className="text-[11px] text-emerald-400 font-semibold">Tersalin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 text-white/60" />
+                          <span className="text-[11px]">Copy Prompt</span>
+                        </>
+                      )}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => onDeleteSingle(out.id)}
-                      className="p-1.5 rounded text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                      title="Delete image"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+
+                    {/* Quick Action Icons: Regenerate & Delete */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onRegenerateSingle(out.id)}
+                        disabled={isGenerating}
+                        aria-label={`Regenerate ${out.angle}`}
+                        title={`Regenerate ${out.angle}`}
+                        className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-40"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onDeleteSingle(out.id)}
+                        aria-label={`Delete ${out.angle} output`}
+                        title={`Delete ${out.angle} image`}
+                        className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-white/70 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -693,7 +790,12 @@ export function ResultGallery({
                   {previewOutput.angle}
                 </h4>
                 <p className="text-xs text-white/60 font-medium">
-                  {language === "id" ? "Estimasi Konsistensi:" : "Consistency Estimate:"} {previewOutput.consistencyScore}%
+                  {language === "id" ? "Estimasi Konsistensi:" : "Consistency Estimate:"}{" "}
+                  {previewOutput.consistencyScore !== null
+                    ? `${previewOutput.consistencyScore}%`
+                    : previewOutput.method === "demo" || previewOutput.imageUrl.includes("/demo/")
+                    ? "Simulasi Demo (N/A)"
+                    : "Belum Terverifikasi (N/A)"}
                 </p>
               </div>
               <button
