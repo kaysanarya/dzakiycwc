@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="ref-arch-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EFE9DE" />
+      <stop offset="50%" stop-color="#DFD5C3" />
+      <stop offset="100%" stop-color="#C5B79F" />
+    </linearGradient>
+    <linearGradient id="ref-plinth" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#E2D7C5" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Architecture -->
+  <rect width="800" height="800" fill="url(#ref-arch-bg)" />
+
+  <!-- Natural Sunlight Beam from Left -->
+  <polygon points="0,0 350,0 700,800 0,800" fill="#FFFFFF" opacity="0.25" filter="blur(20px)" />
+
+  <!-- Travertine Stone Blocks / Editorial Props -->
+  <g transform="translate(180, 280)">
+    <polygon points="120,40 320,40 280,120 80,120" fill="url(#ref-plinth)" stroke="#C7BBA7" />
+    <polygon points="80,120 280,120 280,360 80,360" fill="#D3C7B2" stroke="#B8AA93" />
+    <polygon points="280,120 320,40 320,280 280,360" fill="#BAAC94" stroke="#A7977E" />
+  </g>
+
+  <!-- Dramatic Editorial Shadow -->
+  <polygon points="260,640 680,640 520,720 180,720" fill="#241B10" opacity="0.28" filter="blur(16px)" />
+
+  <!-- Subtle aesthetic sphere prop -->
+  <circle cx="210" cy="540" r="55" fill="#E8DEC9" stroke="#C5B69F" />
+  <ellipse cx="210" cy="595" rx="50" ry="12" fill="#241B10" opacity="0.2" filter="blur(6px)" />
+
+  <!-- Reference Disclaimer Overlay Banner -->
+  <g transform="translate(40, 720)">
+    <rect width="250" height="36" rx="6" fill="#785A28" opacity="0.9" />
+    <circle cx="20" cy="18" r="4" fill="#FDE047" />
+    <text x="34" y="22" font-family="sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">REFERENCE: Lighting & Mood Only</text>
+  </g>
+</svg>

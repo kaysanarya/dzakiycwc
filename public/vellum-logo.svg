@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 100" fill="none">
+  <!-- VELLUM Geometric Mark -->
+  <g fill="#1C1917">
+    <!-- Left V-wing -->
+    <polygon points="4,32 30,32 54,72 43,98 2,32" />
+    <!-- Right Dot -->
+    <circle cx="68" cy="40" r="12" />
+    <!-- Right Lower Bar -->
+    <polygon points="57,59 75,59 60,94 43,98" />
+  </g>
+
+  <!-- VELLUM Wordmark -->
+  <text x="105" y="52" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="900" letter-spacing="3" fill="#1C1917">VELLUM</text>
+  <text x="106" y="80" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="500" letter-spacing="2" fill="#57534E">AI Agent</text>
+</svg>

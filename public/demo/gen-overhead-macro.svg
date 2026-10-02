@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <radialGradient id="macro-grad" cx="50%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="50%" stop-color="#F4EFE6" />
+      <stop offset="100%" stop-color="#E2D8C7" />
+    </radialGradient>
+    <linearGradient id="macro-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF3DB" />
+      <stop offset="25%" stop-color="#F2D79E" />
+      <stop offset="60%" stop-color="#C79F52" />
+      <stop offset="90%" stop-color="#9C7326" />
+      <stop offset="100%" stop-color="#EED49E" />
+    </linearGradient>
+    <linearGradient id="leather-cream" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#FFFDF9" />
+      <stop offset="40%" stop-color="#F4EFE6" />
+      <stop offset="85%" stop-color="#E2D9C8" />
+      <stop offset="100%" stop-color="#CEC2AE" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="800" fill="url(#macro-grad)" />
+
+  <!-- Overhead Macro Detail of Buckle, Insole Stamp & Chisel Toe -->
+  <g transform="translate(100, 100)">
+    <!-- Shoe Insole & Vamp Top-Down View -->
+    <path d="M 120 450 C 90 350 110 200 170 140 C 230 80 340 80 390 140 C 440 200 460 380 430 480 C 400 580 350 620 280 620 C 190 620 140 550 120 450 Z" fill="url(#leather-cream)" stroke="#C8BCAB" stroke-width="2" />
+
+    <!-- Square Chisel Toe Outline at Top -->
+    <path d="M 170 140 L 390 140" stroke="#BAAE9B" stroke-width="3" />
+
+    <!-- Insole Bed Cushion -->
+    <path d="M 160 440 C 140 360 150 250 200 200 C 250 150 320 150 360 200 C 400 250 410 380 390 460 C 370 540 330 580 280 580 C 220 580 180 520 160 440 Z" fill="#E8DEC9" stroke="#D1C3AB" stroke-width="1.5" />
+
+    <!-- Debossed Brand Mark -->
+    <text x="280" y="320" font-family="serif" font-size="16" font-weight="600" fill="#9C773B" letter-spacing="4" text-anchor="middle">HARVIE ATELIER</text>
+    <text x="280" y="340" font-family="sans-serif" font-size="9" fill="#9C773B" letter-spacing="2" text-anchor="middle">MADE IN ITALY • MILANO</text>
+
+    <!-- Arch Vamp Strap Crossing Instep -->
+    <path d="M 100 280 C 200 260 360 260 460 280 L 460 350 C 360 330 200 330 100 350 Z" fill="url(#leather-cream)" stroke="#C8BCAB" stroke-width="2" />
+
+    <!-- Gold Buckle Macro Accent -->
+    <g transform="translate(380, 275)">
+      <rect x="-35" y="-25" width="70" height="50" rx="10" fill="url(#macro-gold)" stroke="#8A6729" stroke-width="2" />
+      <rect x="-22" y="-14" width="44" height="28" rx="5" fill="#E8DEC9" />
+      <line x1="0" y1="-25" x2="0" y2="25" stroke="#8A6729" stroke-width="3" />
+    </g>
+
+    <!-- Subtle Stitching -->
+    <path d="M 110 290 C 200 272 360 272 450 290" fill="none" stroke="#BAAE9B" stroke-width="1.5" stroke-dasharray="4,4" />
+    <path d="M 110 340 C 200 322 360 322 450 340" fill="none" stroke="#BAAE9B" stroke-width="1.5" stroke-dasharray="4,4" />
+  </g>
+
+  <!-- Commercial Badge -->
+  <g transform="translate(40, 720)">
+    <rect width="210" height="36" rx="6" fill="#1C1917" opacity="0.9" />
+    <circle cx="20" cy="18" r="4" fill="#3B82F6" />
+    <text x="34" y="22" font-family="sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">MACRO: Top-Down Craft (96%)</text>
+  </g>
+</svg>
