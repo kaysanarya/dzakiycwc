@@ -13,8 +13,10 @@ import {
   CameraAngle,
 } from "@/types";
 import { buildStructuredPrompt } from "@/lib/prompts/buildPrompt";
-import { generateInpaintingMask } from "./removeBackground";
+import { generateInpaintingMask, prepareImageBuffer, toSafeDataUri } from "./removeBackground";
+import { AiPipelineError } from "./AiPipelineError";
 import { DemoAIProvider } from "./demoProvider";
+import { sanitizeErrorMessage } from "@/lib/auth/serverAuth";
 
 export class ReplicateAIProvider implements AIProvider {
   name = "Replicate (Inpainting / SDXL / Flux)";
@@ -34,7 +36,10 @@ export class ReplicateAIProvider implements AIProvider {
     return this.demoFallback.analyzeReference(input);
   }
 
-  async generateProductImages(input: GenerateImagesInput): Promise<GeneratedOutput[]> {
+  async generateProductImages(
+    input: GenerateImagesInput,
+    signal?: AbortSignal
+  ): Promise<GeneratedOutput[]> {
     const { blueprint, locks, direction, preservation, referenceAnalysis, count } = input;
 
     const isExplicitAngle = direction.cameraAngle && direction.cameraAngle !== "copy_reference";
@@ -62,15 +67,19 @@ export class ReplicateAIProvider implements AIProvider {
 
       let imageUrl: string | undefined;
 
-      // 1. Try SDXL Inpainting with binary mask and diffusion denoising strength (0.65 - 0.80)
+      // 1. Try SDXL Inpainting with binary mask
       if (input.sourceImages && input.sourceImages.length > 0) {
         try {
           const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
             ? input.sourceImages[0].dataUrl.split(",")[1]
             : input.sourceImages[0].dataUrl;
-          const buffer = Buffer.from(rawBase64, "base64");
-          const maskBuf = await generateInpaintingMask(buffer);
-          const maskDataUrl = `data:image/png;base64,${maskBuf.toString("base64")}`;
+          const rawBuf = Buffer.from(rawBase64, "base64");
+
+          // forcePng → resize if needed → generate mask from SAME final buffer
+          const { imageBuffer, width, height } = await prepareImageBuffer(rawBuf);
+          const maskBuf = await generateInpaintingMask(imageBuffer, width, height);
+          const imageDataUri = toSafeDataUri(imageBuffer);
+          const maskDataUri = toSafeDataUri(maskBuf);
 
           const imgRes = await fetch("https://api.replicate.com/v1/models/stability-ai/sdxl/predictions", {
             method: "POST",
@@ -79,14 +88,13 @@ export class ReplicateAIProvider implements AIProvider {
               "Content-Type": "application/json",
               Prefer: "wait",
             },
-            signal: AbortSignal.timeout(90_000),
+            signal: signal ?? AbortSignal.timeout(90_000),
             body: JSON.stringify({
               input: {
-                image: input.sourceImages[0].dataUrl,
-                mask: maskDataUrl,
+                image: imageDataUri,
+                mask: maskDataUri,
                 prompt: generationPrompt,
                 negative_prompt: negativePrompt,
-                // Scaled diffusion denoising strength (0.65 - 0.80) for background and lighting re-rendering
                 prompt_strength: diffusionParams.denoisingStrength,
                 guidance_scale: diffusionParams.guidanceScale,
                 refine: "expert_ensemble_refiner",
@@ -102,17 +110,21 @@ export class ReplicateAIProvider implements AIProvider {
             } else if (typeof imgData.output === "string") {
               imageUrl = imgData.output;
             } else if (imgData.urls?.get) {
-              imageUrl = await this.pollPrediction(imgData.urls.get);
+              imageUrl = await this.pollPrediction(imgData.urls.get, signal);
             }
           } else {
-            console.warn(`Replicate SDXL img2img returned ${imgRes.status}, falling back to Flux Schnell.`);
+            const errText = await imgRes.text().catch(() => "");
+            const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
+            console.error(`[replicate] SDXL inpaint HTTP ${imgRes.status}: ${sanitized}`);
           }
         } catch (sdxlErr) {
-          console.warn("Replicate SDXL img2img attempt notice:", sdxlErr);
+          if (sdxlErr instanceof AiPipelineError) throw sdxlErr; // mask/bg errors propagate
+          const msg = sanitizeErrorMessage(sdxlErr, [this.apiKey]).slice(0, 300);
+          console.error(`[replicate] SDXL exception: ${msg}`);
         }
       }
 
-      // 2. Fallback to Flux Schnell text-to-image with full studio prompt
+      // 2. Fallback to Flux Schnell text-to-image
       if (!imageUrl) {
         const res = await fetch("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions", {
           method: "POST",
@@ -121,7 +133,7 @@ export class ReplicateAIProvider implements AIProvider {
             "Content-Type": "application/json",
             Prefer: "wait",
           },
-          signal: AbortSignal.timeout(90_000),
+          signal: signal ?? AbortSignal.timeout(90_000),
           body: JSON.stringify({
             input: {
               prompt: generationPrompt,
@@ -133,9 +145,13 @@ export class ReplicateAIProvider implements AIProvider {
         });
 
         if (!res.ok) {
-          const errJson = await res.json().catch(() => ({}));
-          const errMsg = errJson?.detail || `Replicate API error (HTTP ${res.status})`;
-          throw new Error(errMsg);
+          const errText = await res.text().catch(() => "");
+          const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
+          throw new AiPipelineError(
+            `Replicate Flux Schnell failed: ${sanitized}`,
+            "provider",
+            { provider: "replicate", status: res.status }
+          );
         }
 
         const data = await res.json();
@@ -144,12 +160,16 @@ export class ReplicateAIProvider implements AIProvider {
         } else if (typeof data.output === "string") {
           imageUrl = data.output;
         } else if (data.urls?.get) {
-          imageUrl = await this.pollPrediction(data.urls.get);
+          imageUrl = await this.pollPrediction(data.urls.get, signal);
         }
       }
 
       if (!imageUrl) {
-        throw new Error("Replicate model prediction timed out or did not return an image URL.");
+        throw new AiPipelineError(
+          "Replicate model prediction timed out or did not return an image URL.",
+          "provider",
+          { provider: "replicate" }
+        );
       }
 
       return {
@@ -182,26 +202,40 @@ export class ReplicateAIProvider implements AIProvider {
     };
 
     const targetCount = Math.min(Math.max(1, count), 8);
-    const promises: Promise<GeneratedOutput>[] = [];
-
+    const promises: (() => Promise<GeneratedOutput>)[] = [];
     for (let i = 0; i < targetCount; i++) {
-      promises.push(generateSingleImage(i));
+      const idx = i;
+      promises.push(() => generateSingleImage(idx));
     }
 
-    const results = await Promise.allSettled(promises);
-    const successfulOutputs: GeneratedOutput[] = [];
+    // Concurrency-limited Promise.allSettled (max 3 in-flight at a time)
+    const CONCURRENCY = 3;
+    const settled: PromiseSettledResult<GeneratedOutput>[] = [];
+    for (let i = 0; i < promises.length; i += CONCURRENCY) {
+      const batch = promises.slice(i, i + CONCURRENCY).map((fn) => fn());
+      const batchResults = await Promise.allSettled(batch);
+      settled.push(...batchResults);
+    }
 
-    results.forEach((r, idx) => {
+    const successfulOutputs: GeneratedOutput[] = [];
+    settled.forEach((r, idx) => {
       if (r.status === "fulfilled") {
         successfulOutputs.push(r.value);
       } else {
-        console.error(`Replicate generation failed for index ${idx}:`, r.reason);
+        const sanitized = sanitizeErrorMessage(r.reason, [this.apiKey]).slice(0, 300);
+        console.error(`[replicate] Generation failed for index ${idx}: stage=${r.reason instanceof AiPipelineError ? r.reason.stage : "unknown"} msg=${sanitized}`);
       }
     });
 
     if (successfulOutputs.length === 0) {
-      const firstRejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
-      throw new Error(firstRejected?.reason?.message || "Failed to generate images with Replicate.");
+      const firstRejected = settled.find((r) => r.status === "rejected") as PromiseRejectedResult;
+      const reason = firstRejected?.reason;
+      if (reason instanceof AiPipelineError) throw reason;
+      throw new AiPipelineError(
+        sanitizeErrorMessage(reason, [this.apiKey]).slice(0, 300) || "Failed to generate images with Replicate.",
+        "provider",
+        { provider: "replicate" }
+      );
     }
 
     return successfulOutputs;
@@ -228,20 +262,28 @@ export class ReplicateAIProvider implements AIProvider {
     };
   }
 
-  private async pollPrediction(getUrl: string): Promise<string | undefined> {
+  private async pollPrediction(getUrl: string, signal?: AbortSignal): Promise<string | undefined> {
     let attempts = 0;
     while (attempts < 15) {
       await new Promise((r) => setTimeout(r, 2000));
       const pollRes = await fetch(getUrl, {
         headers: { Authorization: `Bearer ${this.apiKey}` },
-        signal: AbortSignal.timeout(15_000),
+        signal: signal ?? AbortSignal.timeout(15_000),
       });
       if (pollRes.ok) {
         const pollData = await pollRes.json();
         if (pollData.status === "succeeded") {
           return Array.isArray(pollData.output) ? pollData.output[0] : pollData.output;
         } else if (pollData.status === "failed") {
-          throw new Error(`Replicate prediction failed: ${pollData.error}`);
+          const sanitized = sanitizeErrorMessage(
+            new Error(pollData.error || "Prediction failed"),
+            [this.apiKey]
+          ).slice(0, 300);
+          throw new AiPipelineError(
+            `Replicate prediction failed: ${sanitized}`,
+            "provider",
+            { provider: "replicate" }
+          );
         }
       }
       attempts++;

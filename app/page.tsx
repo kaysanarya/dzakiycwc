@@ -394,12 +394,29 @@ export default function Home() {
         }),
       });
 
-      if (!genRes.ok) {
-        const errJson = await genRes.json().catch(() => ({}));
-        throw new Error(errJson.error || "Step 5 failed: AI image generation service encountered an error.");
+      // Note: HTTP 207 (partial success) is treated as ok by fetch — we must check the body
+      const genData = await genRes.json().catch(() => ({})) as {
+        success?: boolean;
+        outputs?: GeneratedOutput[];
+        failedCount?: number;
+        errors?: { stage: string; message: string }[];
+        error?: { stage: string; message: string } | string;
+      };
+
+      if (!genRes.ok || genData.success === false) {
+        const errMsg =
+          typeof genData.error === "object" ? genData.error?.message
+          : typeof genData.error === "string" ? genData.error
+          : "Step 5 failed: AI image generation service encountered an error.";
+        throw new Error(errMsg || "Step 5 failed: AI image generation service encountered an error.");
       }
-      const genData = await genRes.json();
-      const outputs = genData.outputs as GeneratedOutput[];
+
+      const outputs = (genData.outputs ?? []) as GeneratedOutput[];
+
+      if (genData.failedCount && genData.failedCount > 0 && outputs.length > 0) {
+        // Partial success — log warning, continue with what we have
+        console.warn(`[Pipeline] Partial generation: ${outputs.length} succeeded, ${genData.failedCount} failed.`);
+      }
       updateStepStatus(5, "completed", `${outputs.length} images generated`);
 
       // STEP 6: Validate Product Consistency (F-06: Connect /api/validate & Requirement 13)
@@ -464,10 +481,7 @@ export default function Home() {
               body: JSON.stringify({
                 blueprint: currentBlueprint,
                 locks,
-                direction: {
-                  ...direction,
-                  cameraAngle: output.angle,
-                },
+                direction: { ...direction, cameraAngle: output.angle },
                 preservation,
                 sourceImages,
                 referenceImages,
@@ -475,18 +489,22 @@ export default function Home() {
               }),
             });
 
-            if (!regenRes.ok) {
+            const regenData: { success?: boolean; outputs?: GeneratedOutput[]; error?: { message?: string } | string } =
+              await regenRes.json().catch(() => ({}));
+
+            if (!regenRes.ok || regenData.success === false) {
               return {
                 ...output,
                 status: "rejected" as const,
                 validation: {
                   ...output.validation,
-                  notes: [...(output.validation.notes || []), `Auto-regeneration attempt ${retries} failed on server (HTTP ${regenRes.status}).`],
+                  notes: [
+                    ...(output.validation.notes || []),
+                    `Auto-regeneration attempt ${retries} failed (HTTP ${regenRes.status}).`,
+                  ],
                 },
               };
             }
-
-            const regenData: { outputs?: GeneratedOutput[] } = await regenRes.json();
             const newOutput = regenData.outputs?.[0];
             if (newOutput) {
               if (newOutput.validation?.isFallback) {
@@ -632,14 +650,24 @@ export default function Home() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        const newOutput = data.outputs[0];
-        if (newOutput) {
-          setGeneratedOutputs((prev) =>
-            prev.map((out) => (out.id === outputId ? newOutput : out))
-          );
-          setCurrentLogMessage(`Angle ${outputId} regenerated successfully.`);
+        const data: { success?: boolean; outputs?: GeneratedOutput[] } = await res.json().catch(() => ({}));
+        if (data.success !== false && data.outputs && data.outputs.length > 0) {
+          const newOutput = data.outputs[0];
+          if (newOutput) {
+            setGeneratedOutputs((prev) =>
+              prev.map((out) => (out.id === outputId ? newOutput : out))
+            );
+            setCurrentLogMessage(`Angle ${outputId} regenerated successfully.`);
+          }
+        } else {
+          const errMsg =
+            typeof (data as { error?: { message?: string } }).error === "object"
+              ? (data as { error?: { message?: string } }).error?.message
+              : "Regeneration returned no output.";
+          setCurrentLogMessage(`Failed to regenerate ${outputId}: ${errMsg || "Unknown error"}.`);
         }
+      } else {
+        setCurrentLogMessage(`Failed to regenerate ${outputId} (HTTP ${res.status}).`);
       }
     } catch (err) {
       console.warn("Single regeneration warning:", err);

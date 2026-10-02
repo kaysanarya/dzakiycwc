@@ -13,8 +13,10 @@ import {
   CameraAngle,
 } from "@/types";
 import { buildStructuredPrompt } from "@/lib/prompts/buildPrompt";
-import { generateInpaintingMask } from "./removeBackground";
+import { generateInpaintingMask, prepareImageBuffer } from "./removeBackground";
+import { AiPipelineError } from "./AiPipelineError";
 import { DemoAIProvider } from "./demoProvider";
+import { sanitizeErrorMessage } from "@/lib/auth/serverAuth";
 
 export class StabilityAIProvider implements AIProvider {
   name = "Stability AI (Inpainting / SD3 / Core)";
@@ -34,7 +36,10 @@ export class StabilityAIProvider implements AIProvider {
     return this.demoFallback.analyzeReference(input);
   }
 
-  async generateProductImages(input: GenerateImagesInput): Promise<GeneratedOutput[]> {
+  async generateProductImages(
+    input: GenerateImagesInput,
+    signal?: AbortSignal
+  ): Promise<GeneratedOutput[]> {
     const { blueprint, locks, direction, preservation, referenceAnalysis, count } = input;
 
     const isExplicitAngle = direction.cameraAngle && direction.cameraAngle !== "copy_reference";
@@ -74,14 +79,18 @@ export class StabilityAIProvider implements AIProvider {
           const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
             ? input.sourceImages[0].dataUrl.split(",")[1]
             : input.sourceImages[0].dataUrl;
-          const mimeType = input.sourceImages[0].type || "image/png";
-          const buffer = Buffer.from(rawBase64, "base64");
-          const maskBuffer = await generateInpaintingMask(buffer);
+          const rawBuf = Buffer.from(rawBase64, "base64");
+
+          // Step: forcePng → resize if needed → THEN generate mask from final image
+          const { imageBuffer, width, height } = await prepareImageBuffer(rawBuf);
+          // Mask generated from the SAME (possibly resized) buffer so dimensions always match
+          const maskBuffer = await generateInpaintingMask(imageBuffer, width, height);
 
           const inpaintFormData = new FormData();
           inpaintFormData.append("prompt", generationPrompt.slice(0, 1000));
           inpaintFormData.append("negative_prompt", negativePrompt.slice(0, 500));
-          inpaintFormData.append("image", new Blob([new Uint8Array(buffer)], { type: mimeType }), "product.png");
+          // Always send image/png regardless of original upload MIME type
+          inpaintFormData.append("image", new Blob([new Uint8Array(imageBuffer)], { type: "image/png" }), "product.png");
           inpaintFormData.append("mask", new Blob([new Uint8Array(maskBuffer)], { type: "image/png" }), "mask.png");
           inpaintFormData.append("output_format", "png");
 
@@ -91,7 +100,7 @@ export class StabilityAIProvider implements AIProvider {
               authorization: `Bearer ${this.apiKey}`,
               accept: "application/json",
             },
-            signal: AbortSignal.timeout(90_000),
+            signal: signal ?? AbortSignal.timeout(90_000),
             body: inpaintFormData,
           });
 
@@ -99,10 +108,17 @@ export class StabilityAIProvider implements AIProvider {
             const inpaintData = await inpaintRes.json();
             base64Image = inpaintData.image;
           } else {
-            console.warn(`Stability Inpaint returned ${inpaintRes.status}, falling back to SD3 img2img.`);
+            const errText = await inpaintRes.text().catch(() => "");
+            const sanitized = sanitizeErrorMessage(
+              new Error(errText),
+              [this.apiKey]
+            ).slice(0, 300);
+            console.error(`[stability] Inpaint HTTP ${inpaintRes.status}: ${sanitized}`);
           }
         } catch (inpaintErr) {
-          console.warn("Stability Inpaint notice:", inpaintErr);
+          if (inpaintErr instanceof AiPipelineError) throw inpaintErr; // mask/bg errors propagate
+          const msg = sanitizeErrorMessage(inpaintErr, [this.apiKey]).slice(0, 300);
+          console.error(`[stability] Inpaint exception: ${msg}`);
         }
       }
 
@@ -112,16 +128,15 @@ export class StabilityAIProvider implements AIProvider {
           const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
             ? input.sourceImages[0].dataUrl.split(",")[1]
             : input.sourceImages[0].dataUrl;
-          const mimeType = input.sourceImages[0].type || "image/jpeg";
-          const buffer = Buffer.from(rawBase64, "base64");
-          const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
+          const { imageBuffer } = await prepareImageBuffer(Buffer.from(rawBase64, "base64"));
+          const blob = new Blob([new Uint8Array(imageBuffer)], { type: "image/png" });
 
           const sd3FormData = new FormData();
           sd3FormData.append("prompt", generationPrompt.slice(0, 1000));
           sd3FormData.append("negative_prompt", negativePrompt.slice(0, 500));
-          sd3FormData.append("image", blob, "source.jpg");
+          sd3FormData.append("image", blob, "source.png");
           sd3FormData.append("mode", "image-to-image");
-          // Scaled diffusion denoising strength (0.65 - 0.80) to allow drastic environment & lighting re-rendering
+          // Scaled diffusion denoising strength (0.65 - 0.80)
           sd3FormData.append("strength", String(diffusionParams.denoisingStrength));
           sd3FormData.append("aspect_ratio", targetRatio);
           sd3FormData.append("model", "sd3.5-large");
@@ -133,7 +148,7 @@ export class StabilityAIProvider implements AIProvider {
               authorization: `Bearer ${this.apiKey}`,
               accept: "application/json",
             },
-            signal: AbortSignal.timeout(90_000),
+            signal: signal ?? AbortSignal.timeout(90_000),
             body: sd3FormData,
           });
 
@@ -141,14 +156,18 @@ export class StabilityAIProvider implements AIProvider {
             const sd3Data = await sd3Res.json();
             base64Image = sd3Data.image;
           } else {
-            console.warn(`Stability SD3 img2img returned ${sd3Res.status}, falling back to Stable Image Core.`);
+            const errText = await sd3Res.text().catch(() => "");
+            const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
+            console.error(`[stability] SD3 img2img HTTP ${sd3Res.status}: ${sanitized}`);
           }
         } catch (sd3Err) {
-          console.warn("Stability SD3 img2img attempt notice:", sd3Err);
+          if (sd3Err instanceof AiPipelineError) throw sd3Err;
+          const msg = sanitizeErrorMessage(sd3Err, [this.apiKey]).slice(0, 300);
+          console.error(`[stability] SD3 exception: ${msg}`);
         }
       }
 
-      // 2. Fallback to Stable Image Core if img2img was not applicable or failed
+      // 3. Fallback to Stable Image Core if img2img was not applicable or failed
       if (!base64Image) {
         const formData = new FormData();
         formData.append("prompt", generationPrompt.slice(0, 1000));
@@ -162,17 +181,18 @@ export class StabilityAIProvider implements AIProvider {
             authorization: `Bearer ${this.apiKey}`,
             accept: "application/json",
           },
-          signal: AbortSignal.timeout(90_000),
+          signal: signal ?? AbortSignal.timeout(90_000),
           body: formData,
         });
 
         if (!res.ok) {
-          const errJson = await res.json().catch(() => ({}));
-          const errMsg =
-            errJson?.errors?.[0] ||
-            errJson?.message ||
-            `Stability AI error (HTTP ${res.status})`;
-          throw new Error(errMsg);
+          const errText = await res.text().catch(() => "");
+          const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
+          throw new AiPipelineError(
+            `Stability Core failed: ${sanitized}`,
+            "provider",
+            { provider: "stability", status: res.status }
+          );
         }
 
         const data = await res.json();
@@ -180,7 +200,11 @@ export class StabilityAIProvider implements AIProvider {
       }
 
       if (!base64Image) {
-        throw new Error("Stability AI did not return image data.");
+        throw new AiPipelineError(
+          "Stability AI did not return image data after all strategies.",
+          "provider",
+          { provider: "stability" }
+        );
       }
 
       const imageUrl = `data:image/png;base64,${base64Image}`;
@@ -215,26 +239,40 @@ export class StabilityAIProvider implements AIProvider {
     };
 
     const targetCount = Math.min(Math.max(1, count), 8);
-    const promises: Promise<GeneratedOutput>[] = [];
-
+    const promises: (() => Promise<GeneratedOutput>)[] = [];
     for (let i = 0; i < targetCount; i++) {
-      promises.push(generateSingleImage(i));
+      const idx = i;
+      promises.push(() => generateSingleImage(idx));
     }
 
-    const results = await Promise.allSettled(promises);
-    const successfulOutputs: GeneratedOutput[] = [];
+    // Concurrency-limited Promise.allSettled (max 3 in-flight at a time)
+    const CONCURRENCY = 3;
+    const settled: PromiseSettledResult<GeneratedOutput>[] = [];
+    for (let i = 0; i < promises.length; i += CONCURRENCY) {
+      const batch = promises.slice(i, i + CONCURRENCY).map((fn) => fn());
+      const batchResults = await Promise.allSettled(batch);
+      settled.push(...batchResults);
+    }
 
-    results.forEach((r, idx) => {
+    const successfulOutputs: GeneratedOutput[] = [];
+    settled.forEach((r, idx) => {
       if (r.status === "fulfilled") {
         successfulOutputs.push(r.value);
       } else {
-        console.error(`Stability AI generation failed for index ${idx}:`, r.reason);
+        const sanitized = sanitizeErrorMessage(r.reason, [this.apiKey]).slice(0, 300);
+        console.error(`[stability] Generation failed for index ${idx}: stage=${r.reason instanceof AiPipelineError ? r.reason.stage : "unknown"} msg=${sanitized}`);
       }
     });
 
     if (successfulOutputs.length === 0) {
-      const firstRejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
-      throw new Error(firstRejected?.reason?.message || "Failed to generate images with Stability AI.");
+      const firstRejected = settled.find((r) => r.status === "rejected") as PromiseRejectedResult;
+      const reason = firstRejected?.reason;
+      if (reason instanceof AiPipelineError) throw reason;
+      throw new AiPipelineError(
+        sanitizeErrorMessage(reason, [this.apiKey]).slice(0, 300) || "Failed to generate images with Stability AI.",
+        "provider",
+        { provider: "stability" }
+      );
     }
 
     return successfulOutputs;

@@ -42,11 +42,48 @@ function isValidOpenAiKey(key?: string): boolean {
 }
 
 /**
+ * Validate that a string looks like a real Stability AI API key.
+ * Stability keys start with "sk-" (same prefix as OpenAI) but are at least 40 chars,
+ * OR start with other formats. We accept any sk- key >= 40 chars as Stability-style,
+ * or any key stored in STABILITY_API_KEY env of >= 20 chars.
+ */
+function isValidStabilityKey(key?: string): boolean {
+  if (!key || key.trim().length < 20) return false;
+  return true; // Accept any non-trivial key stored in STABILITY_API_KEY
+}
+
+/**
+ * Validate that a string looks like a real Replicate API key.
+ * Valid Replicate keys start with "r8_" and are at least 30 chars.
+ */
+function isValidReplicateKey(key?: string): boolean {
+  if (!key || key.trim().length < 10) return false;
+  const k = key.trim();
+  return k.startsWith("r8_") && k.length >= 30;
+}
+
+/**
  * Resolves the active AI API key from server-side environment variables.
  * Only returns a key if it passes format validation.
- * Priority: AI_API_KEY → GEMINI_API_KEY → OPENAI_API_KEY → undefined (demo mode)
+ * Priority (per provider):
+ *   stability  → STABILITY_API_KEY
+ *   replicate  → REPLICATE_API_TOKEN → REPLICATE_API_KEY
+ *   openai     → OPENAI_API_KEY → AI_API_KEY (if OpenAI-format)
+ *   gemini     → AI_API_KEY → GEMINI_API_KEY
  */
 export function resolveServerApiKey(provider?: string): string | undefined {
+  if (provider === "stability") {
+    const stabKey = process.env.STABILITY_API_KEY?.trim();
+    if (isValidStabilityKey(stabKey)) return stabKey;
+    return undefined;
+  }
+  if (provider === "replicate") {
+    const repKey1 = process.env.REPLICATE_API_TOKEN?.trim();
+    if (isValidReplicateKey(repKey1)) return repKey1;
+    const repKey2 = process.env.REPLICATE_API_KEY?.trim();
+    if (isValidReplicateKey(repKey2)) return repKey2;
+    return undefined;
+  }
   if (provider === "openai") {
     const openaiKey = process.env.OPENAI_API_KEY?.trim();
     if (isValidOpenAiKey(openaiKey)) return openaiKey;
@@ -65,15 +102,23 @@ export function resolveServerApiKey(provider?: string): string | undefined {
 
 /**
  * Determines the active AI provider from environment variables.
+ * Priority: stability → replicate → gemini → openai → demo.
  * Validates key format — returns "demo" if no valid key is found.
  */
 export function resolveServerProvider(): string {
+  const stabKey = process.env.STABILITY_API_KEY?.trim();
+  if (isValidStabilityKey(stabKey)) return "stability";
+
+  const repKey = (process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY)?.trim();
+  if (isValidReplicateKey(repKey)) return "replicate";
+
   const aiKey = process.env.AI_API_KEY?.trim();
   const geminiKey = process.env.GEMINI_API_KEY?.trim();
-  const openaiKey = process.env.OPENAI_API_KEY?.trim();
-
   if (isValidGeminiKey(aiKey) || isValidGeminiKey(geminiKey)) return "gemini";
+
+  const openaiKey = process.env.OPENAI_API_KEY?.trim();
   if (isValidOpenAiKey(openaiKey) || isValidOpenAiKey(aiKey)) return "openai";
+
   return "demo";
 }
 
@@ -253,10 +298,12 @@ export function sanitizeErrorMessage(
   // Redact known API key patterns
   message = message
     .replace(/AIza[0-9A-Za-z-_]{35}/g, "[REDACTED_GEMINI_KEY]")
-    .replace(/sk-[a-zA-Z0-9_-]{20,}/g, "[REDACTED_OPENAI_KEY]")
+    .replace(/sk-[a-zA-Z0-9_-]{20,}/g, "[REDACTED_SK_KEY]")
     .replace(/r8_[a-zA-Z0-9]{30,}/g, "[REDACTED_REPLICATE_KEY]")
     .replace(/Bearer\s+[a-zA-Z0-9._-]+/gi, "Bearer [REDACTED_TOKEN]")
-    .replace(/([?&]key=)[^&]+/gi, "$1[REDACTED]");
+    .replace(/([?&]key=)[^&]+/gi, "$1[REDACTED]")
+    // Redact large base64 blobs (>100 chars of base64 chars) to prevent image data leakage
+    .replace(/[A-Za-z0-9+/]{100,}={0,2}/g, "[REDACTED_BASE64]");
 
   // Redact any explicitly provided keys
   if (extraKeysToMask) {
