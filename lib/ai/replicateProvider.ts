@@ -13,10 +13,11 @@ import {
   CameraAngle,
 } from "@/types";
 import { buildStructuredPrompt } from "@/lib/prompts/buildPrompt";
+import { generateInpaintingMask } from "./removeBackground";
 import { DemoAIProvider } from "./demoProvider";
 
 export class ReplicateAIProvider implements AIProvider {
-  name = "Replicate (Flux Schnell / SDXL)";
+  name = "Replicate (Inpainting / SDXL / Flux)";
   isDemo = false;
   private apiKey: string;
   private demoFallback = new DemoAIProvider();
@@ -45,7 +46,7 @@ export class ReplicateAIProvider implements AIProvider {
     ];
 
     const generateSingleImage = async (index: number): Promise<GeneratedOutput> => {
-      // F-15: Respect user-selected camera angle if explicitly set
+      // Respect user-selected camera angle if explicitly set
       const angleName = isExplicitAngle
         ? direction.cameraAngle
         : angleVariations[index % angleVariations.length];
@@ -61,9 +62,16 @@ export class ReplicateAIProvider implements AIProvider {
 
       let imageUrl: string | undefined;
 
-      // 1. Try SDXL image-to-image with diffusion denoising strength (0.65 - 0.80) if source product is available
+      // 1. Try SDXL Inpainting with binary mask and diffusion denoising strength (0.65 - 0.80)
       if (input.sourceImages && input.sourceImages.length > 0) {
         try {
+          const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
+            ? input.sourceImages[0].dataUrl.split(",")[1]
+            : input.sourceImages[0].dataUrl;
+          const buffer = Buffer.from(rawBase64, "base64");
+          const maskBuf = await generateInpaintingMask(buffer);
+          const maskDataUrl = `data:image/png;base64,${maskBuf.toString("base64")}`;
+
           const imgRes = await fetch("https://api.replicate.com/v1/models/stability-ai/sdxl/predictions", {
             method: "POST",
             headers: {
@@ -75,6 +83,7 @@ export class ReplicateAIProvider implements AIProvider {
             body: JSON.stringify({
               input: {
                 image: input.sourceImages[0].dataUrl,
+                mask: maskDataUrl,
                 prompt: generationPrompt,
                 negative_prompt: negativePrompt,
                 // Scaled diffusion denoising strength (0.65 - 0.80) for background and lighting re-rendering

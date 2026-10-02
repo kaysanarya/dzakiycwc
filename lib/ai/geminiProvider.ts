@@ -242,9 +242,12 @@ Return JSON ONLY:
 
 ${promptData.generationPrompt}
 
-CRITICAL EXECUTION RULES FOR PRODUCT PHOTOGRAPHY DIRECTOR:
-1. RE-RENDER STUDIO ENVIRONMENT & LIGHTING:
-   - DO NOT just paste the original image. You MUST generate a completely new commercial photography studio environment, with dramatic professional lighting, raytraced shadows, and high-end set design, while strictly maintaining the geometric shape, color, and texture of the main product.
+CRITICAL EXECUTION RULES FOR PRODUCT PHOTOGRAPHY DIRECTOR (INPAINTING & ENVIRONMENT RE-RENDER):
+1. TRUE INPAINTING & ENVIRONMENT RE-RENDER:
+   - The primary input image contains an isolated transparent product subject.
+   - DO NOT just paste the original image or draw a flat rectangle.
+   - You MUST generate a completely new commercial photography studio environment AROUND and DIRECTLY UNDERNEATH this transparent product subject.
+   - Seamlessly integrate the product into the environment. Generate highly realistic raytraced contact shadows directly underneath the product based on the new lighting direction. No floating products.
    - Re-render the visual scene with realistic 3D diffusion depth, volumetric studio lighting, global illumination, and authentic raytraced contact shadows under the product base.
    - Cast directional rim highlights matching the key light scrim to contour the product edges.
 

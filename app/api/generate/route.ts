@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateImages } from "@/lib/ai/generateImages";
 import { analyzeReference } from "@/lib/ai/analyzeReference";
+import { removeBackground } from "@/lib/ai/removeBackground";
 import { getAIProvider } from "@/lib/ai/factory";
 import { validateApiKeyAndProvider, sanitizeErrorMessage } from "@/lib/auth/serverAuth";
 import {
@@ -55,7 +56,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Step 3: Analyze Reference if provided
+    // Step 1: Pre-processing Phase: Mandatory Background Removal (Isolated Transparent PNG)
+    console.log(`[Pipeline /api/generate] Pre-processing: Removing background from ${sourceImages.length} source image(s)...`);
+    const isolatedSourceImages: UploadedImage[] = await Promise.all(
+      sourceImages.map(async (img, idx) => {
+        try {
+          const transparentDataUrl = await removeBackground({
+            imageUrlOrBase64: img.dataUrl,
+            mimeType: img.type,
+            stabilityApiKey: process.env.STABILITY_API_KEY || (validation.provider === "stability" ? validation.apiKey : undefined),
+            replicateApiKey: process.env.REPLICATE_API_TOKEN || process.env.REPLICATE_API_KEY || (validation.provider === "replicate" ? validation.apiKey : undefined),
+          });
+          return {
+            ...img,
+            dataUrl: transparentDataUrl,
+            type: "image/png",
+            name: `${img.name || `product-${idx}`}-isolated.png`,
+          };
+        } catch (rmErr) {
+          console.warn(`[Pipeline /api/generate] Background removal notice on image ${idx}:`, rmErr);
+          return img;
+        }
+      })
+    );
+
+    // Step 2: Analyze Reference if provided
     let referenceAnalysis = undefined;
     if (referenceImages && referenceImages.length > 0) {
       try {
@@ -87,7 +112,7 @@ export async function POST(req: NextRequest) {
         direction,
         preservation,
         referenceAnalysis,
-        sourceImages,
+        sourceImages: isolatedSourceImages,
         referenceImages,
         count: Math.min(Math.max(1, count), 8),
       },

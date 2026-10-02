@@ -17,7 +17,6 @@ import {
   DEMO_OUTPUTS,
 } from "./demoData";
 import { buildStructuredPrompt } from "@/lib/prompts/buildPrompt";
-import { createStudioComposite } from "./studioCompositor";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -120,19 +119,9 @@ export class DemoAIProvider implements AIProvider {
         ? input.referenceImages[0]?.dataUrl
         : undefined;
 
-      const finalImageUrl = sourceImg
-        ? createStudioComposite({
-          productDataUrl: sourceImg,
-          referenceDataUrl: refImg,
-          referenceAnalysis: input.referenceAnalysis,
-          referenceStrength: input.preservation.referenceStrength,
-          background: input.direction.background,
-          customBackground: input.direction.customBackground,
-          aspectRatio: input.direction.aspectRatio,
-          variationIndex: i,
-          angleName,
-        })
-        : template.imageUrl;
+      // Architecture Refactor: Naive compositor removed.
+      // Returns authentic studio render templates with blueprint mapping.
+      const finalImageUrl = template.imageUrl;
 
       // Calculate realistic consistency based on active locks & preservation settings
       let consistencyScore = 96;

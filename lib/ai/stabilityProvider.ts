@@ -13,10 +13,11 @@ import {
   CameraAngle,
 } from "@/types";
 import { buildStructuredPrompt } from "@/lib/prompts/buildPrompt";
+import { generateInpaintingMask } from "./removeBackground";
 import { DemoAIProvider } from "./demoProvider";
 
 export class StabilityAIProvider implements AIProvider {
-  name = "Stability AI (Stable Image Core / SD3)";
+  name = "Stability AI (Inpainting / SD3 / Core)";
   isDemo = false;
   private apiKey: string;
   private demoFallback = new DemoAIProvider();
@@ -51,7 +52,7 @@ export class StabilityAIProvider implements AIProvider {
       : "1:1";
 
     const generateSingleImage = async (index: number): Promise<GeneratedOutput> => {
-      // F-15: Respect user-selected camera angle if explicitly set
+      // Respect user-selected camera angle if explicitly set
       const angleName = isExplicitAngle
         ? direction.cameraAngle
         : angleVariations[index % angleVariations.length];
@@ -67,15 +68,53 @@ export class StabilityAIProvider implements AIProvider {
 
       let base64Image: string | undefined;
 
-      // 1. Try SD3 Image-to-Image with diffusion denoising strength (0.65 - 0.80)
+      // 1. Try True Inpainting (Background Replacement around transparent product)
       if (input.sourceImages && input.sourceImages.length > 0) {
+        try {
+          const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
+            ? input.sourceImages[0].dataUrl.split(",")[1]
+            : input.sourceImages[0].dataUrl;
+          const mimeType = input.sourceImages[0].type || "image/png";
+          const buffer = Buffer.from(rawBase64, "base64");
+          const maskBuffer = await generateInpaintingMask(buffer);
+
+          const inpaintFormData = new FormData();
+          inpaintFormData.append("prompt", generationPrompt.slice(0, 1000));
+          inpaintFormData.append("negative_prompt", negativePrompt.slice(0, 500));
+          inpaintFormData.append("image", new Blob([new Uint8Array(buffer)], { type: mimeType }), "product.png");
+          inpaintFormData.append("mask", new Blob([new Uint8Array(maskBuffer)], { type: "image/png" }), "mask.png");
+          inpaintFormData.append("output_format", "png");
+
+          const inpaintRes = await fetch("https://api.stability.ai/v2beta/stable-image/edit/inpaint", {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${this.apiKey}`,
+              accept: "application/json",
+            },
+            signal: AbortSignal.timeout(90_000),
+            body: inpaintFormData,
+          });
+
+          if (inpaintRes.ok) {
+            const inpaintData = await inpaintRes.json();
+            base64Image = inpaintData.image;
+          } else {
+            console.warn(`Stability Inpaint returned ${inpaintRes.status}, falling back to SD3 img2img.`);
+          }
+        } catch (inpaintErr) {
+          console.warn("Stability Inpaint notice:", inpaintErr);
+        }
+      }
+
+      // 2. Try SD3 Image-to-Image with diffusion denoising strength (0.65 - 0.80)
+      if (!base64Image && input.sourceImages && input.sourceImages.length > 0) {
         try {
           const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
             ? input.sourceImages[0].dataUrl.split(",")[1]
             : input.sourceImages[0].dataUrl;
           const mimeType = input.sourceImages[0].type || "image/jpeg";
           const buffer = Buffer.from(rawBase64, "base64");
-          const blob = new Blob([buffer], { type: mimeType });
+          const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
 
           const sd3FormData = new FormData();
           sd3FormData.append("prompt", generationPrompt.slice(0, 1000));

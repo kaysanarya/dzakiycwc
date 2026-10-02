@@ -198,8 +198,10 @@ MANDATORY DIRECTIVE: DO NOT just paste the original image. You MUST generate a c
 
 === 3. LIGHTING ARCHITECTURE & SHADOW PHYSICS ===
 ${referenceStyleSection}
+- MANDATORY CONTACT SHADOW DIRECTIVE: Seamlessly integrate the product into the environment. Generate highly realistic raytraced contact shadows directly underneath the product based on the new lighting direction. No floating products.
 
 === 4. DIFFUSION ENGINE DIRECTIVES ===
+- Inpainting & Environment Synthesis: Seamlessly integrate the product into the environment. Generate highly realistic raytraced contact shadows directly underneath the product based on the new lighting direction. No floating products.
 - Denoising Space: Re-render background, lighting, and ambient light bounce with high diffusion latitude (${denoisingStrength} denoising strength) while locking product structure.
 - Reference Direction Strength: ${refStrengthNum}/100 (${refWeight})
 - Detail Preservation Level: ${preservation.detailPreservation}/100
