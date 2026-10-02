@@ -22,37 +22,58 @@ export type AllowedConceptArtProvider = typeof ALLOWED_CONCEPT_ART_PROVIDERS[num
 export const MAX_BODY_SIZE_BYTES = 15 * 1024 * 1024;
 
 /**
+ * Validate that a string looks like a real Gemini API key.
+ * Valid Gemini keys start with "AIza" and are ~39 chars.
+ */
+function isValidGeminiKey(key?: string): boolean {
+  if (!key || key.trim().length < 10) return false;
+  const k = key.trim();
+  return k.startsWith("AIza") && k.length >= 35;
+}
+
+/**
+ * Validate that a string looks like a real OpenAI API key.
+ * Valid keys start with "sk-" and are at least 30 chars.
+ */
+function isValidOpenAiKey(key?: string): boolean {
+  if (!key || key.trim().length < 10) return false;
+  const k = key.trim();
+  return k.startsWith("sk-") && k.length >= 30;
+}
+
+/**
  * Resolves the active AI API key from server-side environment variables.
- * Priority: AI_API_KEY → GEMINI_API_KEY → OPENAI_API_KEY → undefined (falls back to demo mode)
+ * Only returns a key if it passes format validation.
+ * Priority: AI_API_KEY → GEMINI_API_KEY → OPENAI_API_KEY → undefined (demo mode)
  */
 export function resolveServerApiKey(provider?: string): string | undefined {
   if (provider === "openai") {
-    return (
-      process.env.OPENAI_API_KEY?.trim() ||
-      process.env.AI_API_KEY?.trim() ||
-      undefined
-    );
+    const openaiKey = process.env.OPENAI_API_KEY?.trim();
+    if (isValidOpenAiKey(openaiKey)) return openaiKey;
+    // Also accept a valid OpenAI key stored in AI_API_KEY
+    const aiKey = process.env.AI_API_KEY?.trim();
+    if (isValidOpenAiKey(aiKey)) return aiKey;
+    return undefined;
   }
-  // Gemini / default — prefers AI_API_KEY, then GEMINI_API_KEY
-  return (
-    process.env.AI_API_KEY?.trim() ||
-    process.env.GEMINI_API_KEY?.trim() ||
-    undefined
-  );
+  // Gemini / default
+  const aiKey = process.env.AI_API_KEY?.trim();
+  if (isValidGeminiKey(aiKey)) return aiKey;
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  if (isValidGeminiKey(geminiKey)) return geminiKey;
+  return undefined;
 }
 
 /**
  * Determines the active AI provider from environment variables.
- * Returns "gemini" if a Gemini key is set, "openai" if only an OpenAI key is set,
- * or "demo" when no key is configured.
+ * Validates key format — returns "demo" if no valid key is found.
  */
 export function resolveServerProvider(): string {
   const aiKey = process.env.AI_API_KEY?.trim();
   const geminiKey = process.env.GEMINI_API_KEY?.trim();
   const openaiKey = process.env.OPENAI_API_KEY?.trim();
 
-  if (aiKey || geminiKey) return "gemini";
-  if (openaiKey) return "openai";
+  if (isValidGeminiKey(aiKey) || isValidGeminiKey(geminiKey)) return "gemini";
+  if (isValidOpenAiKey(openaiKey) || isValidOpenAiKey(aiKey)) return "openai";
   return "demo";
 }
 
