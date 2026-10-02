@@ -36,6 +36,7 @@ export class ReplicateAIProvider implements AIProvider {
   async generateProductImages(input: GenerateImagesInput): Promise<GeneratedOutput[]> {
     const { blueprint, locks, direction, preservation, referenceAnalysis, count } = input;
 
+    const isExplicitAngle = direction.cameraAngle && direction.cameraAngle !== "copy_reference";
     const angleVariations = [
       "hero three-quarter perspective studio shot",
       "straight-on front profile commercial catalog view",
@@ -44,11 +45,15 @@ export class ReplicateAIProvider implements AIProvider {
     ];
 
     const generateSingleImage = async (index: number): Promise<GeneratedOutput> => {
-      const angleName = angleVariations[index % angleVariations.length];
+      // F-15: Respect user-selected camera angle if explicitly set
+      const angleName = isExplicitAngle
+        ? direction.cameraAngle
+        : angleVariations[index % angleVariations.length];
+
       const { generationPrompt } = buildStructuredPrompt({
         blueprint,
         locks,
-        direction: { ...direction, cameraAngle: angleName as CameraAngle },
+        direction: { ...direction, cameraAngle: (isExplicitAngle ? direction.cameraAngle : angleName) as CameraAngle },
         preservation,
         referenceAnalysis,
         variationIndex: index,

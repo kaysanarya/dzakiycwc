@@ -56,22 +56,22 @@ Server (Next.js Node Runtime)
 
 | ID | Severity | Title | File:Line | Status |
 |---|---|---|---|---|
-| F-01 | **P1** | Fake "Auto-Regeneration" in Step 6 Inflates Scores Client-Side Without Calling AI | `app/page.tsx:414–435` | [VERIFIED] |
-| F-02 | **P1** | Unbounded Content-Length Check Allows 15MB+ Payload DoS via Chunked Transfer | `lib/auth/serverAuth.ts:49–58` | [VERIFIED] |
-| F-03 | **P1** | Silent Reference Upload Hang on Mixed or Non-Image Files | `components/upload/ReferenceUpload.tsx:28–46` | [VERIFIED] |
-| F-04 | **P1** | ConceptArtGenerator Leaks Object URLs and Mutates State After Modal Close | `components/concept-art/ConceptArtGenerator.tsx:162–209` | [VERIFIED] |
-| F-05 | **P2** | Multi-Output Generation Silently Caps at 4 in All Providers Despite UI Offering 6 and 8 | `app/api/generate/route.ts:89`, `lib/ai/geminiProvider.ts:213`, `lib/ai/openAIProvider.ts:201` | [VERIFIED] |
-| F-06 | **P2** | Dedicated `/api/blueprint` and `/api/validate` Routes and Libraries Are Dead Uncalled Code | `app/api/blueprint/route.ts:1–62`, `app/api/validate/route.ts:1–64`, `app/page.tsx:350–354` | [VERIFIED] |
-| F-07 | **P2** | Gemini `validateProductConsistency` Sends Zero Images — Consistency Score is a Text-Only Hallucination | `lib/ai/geminiProvider.ts:444–461` | [VERIFIED] |
-| F-08 | **P2** | OpenAI, Stability, and Replicate Providers Fabricate Validation Scores Without Executing Validation | `lib/ai/openAIProvider.ts:177–187`, `lib/ai/stabilityProvider.ts:101–111` | [VERIFIED] |
-| F-09 | **P2** | Massive Base64 URL Expansion in `studioCompositor.ts` Blows Up Response Size and Memory | `lib/ai/studioCompositor.ts:196–210` | [VERIFIED] |
-| F-10 | **P2** | Cross-Origin Image Downloads in ResultGallery Fail to Trigger Save Dialog | `components/result-gallery/ResultGallery.tsx:68–75` | [VERIFIED] |
-| F-11 | **P2** | Inpainting ("Magic Retouch") and Background Removal in ResultGallery Are Visual No-Ops | `components/result-gallery/ResultGallery.tsx:86–93, 142–150, 210–221` | [VERIFIED] |
-| F-12 | **P2** | Unbounded In-Memory Map in `/api/concept-art` Causes Gradual Memory Leak | `app/api/concept-art/route.ts:5, 143–153` | [VERIFIED] |
-| F-13 | **P2** | Stale State and Silent Quota Failure in LocalStorage History Persistence | `app/page.tsx:226–234` | [VERIFIED] |
-| F-14 | **P3** | Blueprint Cache Key Omits Heel Shape and Heel Finish | `app/page.tsx:306–308` | [VERIFIED] |
-| F-15 | **P3** | Camera Angle Setting is Overwritten by Hardcoded Arrays in OpenAI, Stability, and Replicate Providers | `lib/ai/openAIProvider.ts:125–129`, `lib/ai/stabilityProvider.ts:53–56` | [VERIFIED] |
-| F-16 | **P3** | Unused `@supabase/supabase-js` Dependency and Unused Dead Module | `lib/supabase/client.ts:1–16`, `package.json:12` | [VERIFIED] |
+| F-01 | **P1** | Fake "Auto-Regeneration" in Step 6 Inflates Scores Client-Side Without Calling AI | `app/page.tsx:414–435` | [FIXED] |
+| F-02 | **P1** | Unbounded Content-Length Check Allows 15MB+ Payload DoS via Chunked Transfer | `lib/auth/serverAuth.ts:49–58` | [FIXED] |
+| F-03 | **P1** | Silent Reference Upload Hang on Mixed or Non-Image Files | `components/upload/ReferenceUpload.tsx:28–46` | [FIXED] |
+| F-04 | **P1** | ConceptArtGenerator Leaks Object URLs and Mutates State After Modal Close | `components/concept-art/ConceptArtGenerator.tsx:162–209` | [FIXED] |
+| F-05 | **P2** | Multi-Output Generation Silently Caps at 4 in All Providers Despite UI Offering 6 and 8 | `app/api/generate/route.ts:89`, `lib/ai/geminiProvider.ts:213`, `lib/ai/openAIProvider.ts:201` | [FIXED] |
+| F-06 | **P2** | Dedicated `/api/blueprint` and `/api/validate` Routes and Libraries Are Dead Uncalled Code | `app/api/blueprint/route.ts:1–62`, `app/api/validate/route.ts:1–64`, `app/page.tsx:350–354` | [FIXED] |
+| F-07 | **P2** | Gemini `validateProductConsistency` Sends Zero Images — Consistency Score is a Text-Only Hallucination | `lib/ai/geminiProvider.ts:444–461` | [FIXED] |
+| F-08 | **P2** | OpenAI, Stability, and Replicate Providers Fabricate Validation Scores Without Executing Validation | `lib/ai/openAIProvider.ts:177–187`, `lib/ai/stabilityProvider.ts:101–111` | [FIXED] |
+| F-09 | **P2** | Massive Base64 URL Expansion in `studioCompositor.ts` Blows Up Response Size and Memory | `lib/ai/studioCompositor.ts:196–210` | [FIXED] |
+| F-10 | **P2** | Cross-Origin Image Downloads in ResultGallery Fail to Trigger Save Dialog | `components/result-gallery/ResultGallery.tsx:68–75` | [FIXED] |
+| F-11 | **P2** | Inpainting ("Magic Retouch") and Background Removal in ResultGallery Are Visual No-Ops | `components/result-gallery/ResultGallery.tsx:86–93, 142–150, 210–221` | [FIXED] |
+| F-12 | **P2** | Unbounded In-Memory Map in `/api/concept-art` Causes Gradual Memory Leak | `app/api/concept-art/route.ts:5, 143–153` | [FIXED] |
+| F-13 | **P2** | Stale State and Silent Quota Failure in LocalStorage History Persistence | `app/page.tsx:226–234` | [FIXED] |
+| F-14 | **P3** | Blueprint Cache Key Omits Heel Shape and Heel Finish | `app/page.tsx:306–308` | [FIXED] |
+| F-15 | **P3** | Camera Angle Setting is Overwritten by Hardcoded Arrays in OpenAI, Stability, and Replicate Providers | `lib/ai/openAIProvider.ts:125–129`, `lib/ai/stabilityProvider.ts:53–56` | [FIXED] |
+| F-16 | **P3** | Unused `@supabase/supabase-js` Dependency and Unused Dead Module | `lib/supabase/client.ts:1–16`, `package.json:12` | [FIXED] |
 
 ---
 
@@ -80,7 +80,7 @@ Server (Next.js Node Runtime)
 ### F-01: Fake "Auto-Regeneration" in Step 6 Inflates Scores Client-Side Without Calling AI
 
 - **Severity:** P1
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `app/page.tsx:414–435`
 - **Evidence:**
 ```typescript
@@ -156,7 +156,7 @@ while (retries < maxRetries && finalOutputs.some((o) => o.consistencyScore < 85)
 ### F-02: Unbounded Content-Length Check Allows 15MB+ Payload DoS via Chunked Transfer
 
 - **Severity:** P1
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `lib/auth/serverAuth.ts:49–58`
 - **Evidence:**
 ```typescript
@@ -196,7 +196,7 @@ while (retries < maxRetries && finalOutputs.some((o) => o.consistencyScore < 85)
 ### F-03: Silent Reference Upload Hang on Mixed or Non-Image Files
 
 - **Severity:** P1
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `components/upload/ReferenceUpload.tsx:28–46`
 - **Evidence:**
 ```typescript
@@ -250,7 +250,7 @@ while (retries < maxRetries && finalOutputs.some((o) => o.consistencyScore < 85)
 ### F-04: ConceptArtGenerator Leaks Object URLs and Mutates State After Modal Close
 
 - **Severity:** P1
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `components/concept-art/ConceptArtGenerator.tsx:162–209`
 - **Evidence:**
 ```typescript
@@ -301,7 +301,7 @@ while (retries < maxRetries && finalOutputs.some((o) => o.consistencyScore < 85)
 ### F-05: Multi-Output Generation Silently Caps at 4 in All Providers Despite UI Offering 6 and 8
 
 - **Severity:** P2
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `app/api/generate/route.ts:89`, `lib/ai/geminiProvider.ts:213`, `lib/ai/openAIProvider.ts:201`, `lib/ai/stabilityProvider.ts:121`, `lib/ai/replicateProvider.ts:140`, `lib/ai/demoProvider.ts:91`
 - **Evidence:**
 ```typescript
@@ -324,7 +324,7 @@ const targetCount = Math.min(count, 4);
 ### F-06: Dedicated `/api/blueprint` and `/api/validate` Routes and Libraries Are Dead Uncalled Code
 
 - **Severity:** P2
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `app/api/blueprint/route.ts:1–62`, `app/api/validate/route.ts:1–64`, `lib/ai/buildBlueprint.ts:1–68`, `lib/ai/validateImages.ts:1–12`, `app/page.tsx:350–354`
 - **Evidence:**
 ```typescript
@@ -344,7 +344,7 @@ updateStepStatus(2, "completed", "Blueprint generated as authoritative constrain
 ### F-07: Gemini `validateProductConsistency` Sends Zero Images — Consistency Score is a Text-Only Hallucination
 
 - **Severity:** P2
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `lib/ai/geminiProvider.ts:444–461`
 - **Evidence:**
 ```typescript
@@ -377,7 +377,7 @@ const response = await fetch(
 ### F-08: OpenAI, Stability, and Replicate Providers Fabricate Validation Scores Without Executing Validation
 
 - **Severity:** P2
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `lib/ai/openAIProvider.ts:177–187`, `lib/ai/stabilityProvider.ts:101–111`, `lib/ai/replicateProvider.ts:120–130`
 - **Evidence:**
 ```typescript
@@ -407,7 +407,7 @@ validation: {
 ### F-09: Massive Base64 URL Expansion in `studioCompositor.ts` Blows Up Response Size and Memory
 
 - **Severity:** P2
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `lib/ai/studioCompositor.ts:196–210`
 - **Evidence:**
 ```typescript
@@ -520,7 +520,7 @@ rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
 ### F-14: Blueprint Cache Key Omits Heel Shape and Heel Finish
 
 - **Severity:** P3
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `app/page.tsx:306–308`
 - **Evidence:**
 ```typescript
@@ -537,7 +537,7 @@ const isCacheValid = Boolean(blueprint) && cachedSourceKey === currentSourceKey;
 ### F-15: Camera Angle Setting is Overwritten by Hardcoded Arrays in OpenAI, Stability, and Replicate Providers
 
 - **Severity:** P3
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `lib/ai/openAIProvider.ts:125–129`, `lib/ai/stabilityProvider.ts:53–56`, `lib/ai/replicateProvider.ts:47–50`
 - **Evidence:**
 ```typescript
@@ -561,7 +561,7 @@ const { generationPrompt } = buildStructuredPrompt({
 ### F-16: Unused `@supabase/supabase-js` Dependency and Unused Dead Module
 
 - **Severity:** P3
-- **Status:** [VERIFIED]
+- **Status:** [FIXED]
 - **File & Line:** `lib/supabase/client.ts:1–16`, `package.json:12`
 - **Evidence:**
 ```typescript
@@ -580,22 +580,22 @@ export const supabase = isSupabaseConfigured
 ## Section 3 — Roadmap
 
 ### Tier 1: Must-Fix Now (Integrity & Operational Reliability)
-- **F-01:** Replace fake +10 score inflation in `app/page.tsx` with authentic regeneration calls or proper rejection tagging.
-- **F-02:** Guard body parsing against chunked transfer encoding / missing `Content-Length` header in `lib/auth/serverAuth.ts`.
-- **F-03:** Fix early return counting bug in `components/upload/ReferenceUpload.tsx` so mixed file drops do not hang indefinitely.
-- **F-04:** Add `AbortController` cancellation to `components/concept-art/ConceptArtGenerator.tsx` on modal close / unmount to eliminate memory leaks.
+- [x] **F-01:** Replace fake +10 score inflation in `app/page.tsx` with authentic regeneration calls or proper rejection tagging.
+- [x] **F-02:** Guard body parsing against chunked transfer encoding / missing `Content-Length` header in `lib/auth/serverAuth.ts`.
+- [x] **F-03:** Fix early return counting bug in `components/upload/ReferenceUpload.tsx` so mixed file drops do not hang indefinitely.
+- [x] **F-04:** Add `AbortController` cancellation to `components/concept-art/ConceptArtGenerator.tsx` on modal close / unmount to eliminate memory leaks.
 
 ### Tier 2: Structural & Quality-of-Service
-- **F-05:** Align provider batch limits (`Math.min(count, 4)`) with the UI generation count selector (support up to 8 images).
-- **F-06:** Formally wire or remove dead endpoints `/api/blueprint` and `/api/validate`.
-- **F-07 & F-08:** Pass real images into Gemini consistency verification and stop returning hardcoded 95/100 scores for OpenAI/Stability.
-- **F-09:** Optimize `lib/ai/studioCompositor.ts` SVG generation to prevent 80MB payload bloat.
-- **F-10:** Fix cross-origin downloads in `components/result-gallery/ResultGallery.tsx` via blob fetching.
-- **F-11:** Connect or accurately label prototype actions (Inpainting & Background Removal) in `ResultGallery.tsx`.
-- **F-12:** Implement TTL expiration for the in-memory rate limit map in `/api/concept-art`.
-- **F-13:** Prevent `localStorage` quota crashes by storing thumbnails instead of full 10MB base64 images in history.
+- [x] **F-05:** Align provider batch limits (`Math.min(count, 4)`) with the UI generation count selector (support up to 8 images).
+- [x] **F-06:** Formally wire or remove dead endpoints `/api/blueprint` and `/api/validate`.
+- [x] **F-07 & F-08:** Pass real images into Gemini consistency verification and stop returning hardcoded 95/100 scores for OpenAI/Stability.
+- [x] **F-09:** Optimize `lib/ai/studioCompositor.ts` SVG generation to prevent 80MB payload bloat.
+- [x] **F-10:** Fix cross-origin downloads in `components/result-gallery/ResultGallery.tsx` via blob fetching.
+- [x] **F-11:** Connect or accurately label prototype actions (Inpainting & Background Removal) in `ResultGallery.tsx`.
+- [x] **F-12:** Implement TTL expiration for the in-memory rate limit map in `/api/concept-art`.
+- [x] **F-13:** Prevent `localStorage` quota crashes by storing thumbnails instead of full 10MB base64 images in history.
 
 ### Tier 3: Nice-to-Have & Cleanup
-- **F-14:** Include full `heelSpecs` properties in the blueprint cache key in `app/page.tsx`.
-- **F-15:** Respect user-selected camera angle in OpenAI, Stability, and Replicate providers.
-- **F-16:** Remove unused `lib/supabase/client.ts` and `@supabase/supabase-js` dependency.
+- [x] **F-14:** Include full `heelSpecs` properties in the blueprint cache key in `app/page.tsx`.
+- [x] **F-15:** Respect user-selected camera angle in OpenAI, Stability, and Replicate providers.
+- [x] **F-16:** Remove unused `lib/supabase/client.ts` and `@supabase/supabase-js` dependency.

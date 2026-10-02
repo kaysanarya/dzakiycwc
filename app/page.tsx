@@ -363,9 +363,14 @@ export default function Home() {
     setCurrentLogMessage("Initializing VELLUM Photography Director pipeline...");
 
     try {
-      // Blueprint Caching System (Requirement 13)
-      const currentSourceKey = `${category}-${heelSpecs.heelHeight || ""}-${sourceImages.map((img) => img.id + "_" + img.size).join("|")}`;
+      // Blueprint Caching System (Requirement 13, F-14: Include full heelSpecs in cache key)
+      const heelKey = category === "footwear" ? JSON.stringify(heelSpecs) : "";
+      const currentSourceKey = `${category}-${heelKey}-${sourceImages.map((img) => img.id + "_" + img.size).join("|")}`;
       const isCacheValid = Boolean(blueprint) && cachedSourceKey === currentSourceKey;
+
+      const footwearNotes = category === "footwear"
+        ? `Footwear Heel Specs: Height: ${heelSpecs.heelHeight}, Width: ${heelSpecs.heelWidth}, Shape: ${heelSpecs.heelShape}, Angle: ${heelSpecs.heelAngle}, Position: ${heelSpecs.heelPosition}, Thickness: ${heelSpecs.heelThickness}, Front Sole: ${heelSpecs.frontSoleThickness}`
+        : undefined;
 
       let currentBlueprint: ProductBlueprint;
 
@@ -392,7 +397,7 @@ export default function Home() {
           body: JSON.stringify({
             images: sourceImages,
             categoryHint: category,
-            userNotes: category === "footwear" ? `Heel spec: ${heelSpecs.heelHeight}` : undefined,
+            userNotes: footwearNotes,
             userProvider: apiCredentials?.provider || "demo",
           }),
         });
@@ -420,7 +425,7 @@ export default function Home() {
               images: sourceImages,
               category,
               existingBlueprint: currentBlueprint,
-              userNotes: category === "footwear" ? `Heel spec: ${heelSpecs.heelHeight}` : undefined,
+              userNotes: footwearNotes,
               userProvider: apiCredentials?.provider || "demo",
             }),
           });

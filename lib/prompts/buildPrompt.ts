@@ -60,7 +60,18 @@ export function buildStructuredPrompt(params: PromptBuildParams): {
   }
 
   // 2. Camera Angle logic with subtle angle variations for multi-image batches
-  let angleDirective: string = direction.cameraAngle;
+  const angleDescriptions: Record<string, string> = {
+    front: "straight-on front eye-level commercial catalog view",
+    three_quarter: "hero three-quarter perspective studio view",
+    side: "clean horizontal side profile elevation view",
+    top: "overhead 90-degree top-down flatlay perspective",
+    low_angle: "dramatic dynamic low-angle upward hero elevation",
+    high_angle: "elevated 45-degree high-angle commercial studio perspective",
+    macro_detail: "close-up macro detail focusing on texture, stitching, and craftsmanship",
+    custom: "custom perspective",
+  };
+
+  let angleDirective: string = angleDescriptions[direction.cameraAngle] || direction.cameraAngle;
   if (direction.cameraAngle === "copy_reference" && referenceAnalysis) {
     angleDirective = `match reference camera perspective (${referenceAnalysis.framingComposition})`;
   } else if (direction.cameraAngle === "copy_reference") {
