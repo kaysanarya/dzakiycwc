@@ -897,22 +897,35 @@ export default function Home() {
             />
 
             {/* Degraded Generation Warning Banner */}
-            {generatedOutputs.some((o) => o.degraded) && (
-              <div className="p-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 backdrop-blur-md text-amber-200 flex items-start gap-3 shadow-lg">
-                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-amber-300 flex items-center gap-2">
-                    <span>Peringatan: Generasi Menggunakan Metode Fallback (Degraded)</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-200">
-                      {generatedOutputs.filter((o) => o.degraded).length} / {generatedOutputs.length} GAMBAR
-                    </span>
-                  </h4>
-                  <p className="text-xs text-amber-200/80 leading-relaxed">
-                    Sebagian atau seluruh gambar dihasilkan melalui fallback text-to-image tanpa foto produk (karena inpainting gagal). Detail fisik produk mungkin tidak akurat atau tidak mempertahankan geometri asli secara presisi.
-                  </p>
+            {generatedOutputs.some((o) => o.degraded) && (() => {
+              const inpaintFallbackOutputs = generatedOutputs.filter(
+                (o) => o.method === "stability-core" || o.method === "replicate-flux"
+              );
+              const isOnlyInpaintFallback =
+                inpaintFallbackOutputs.length > 0 &&
+                inpaintFallbackOutputs.length === generatedOutputs.filter((o) => o.degraded).length;
+
+              const degradedMsg = isOnlyInpaintFallback
+                ? "Sebagian atau seluruh gambar beralih ke fallback text-to-image karena inpainting gagal (dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat)."
+                : "Gambar dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat.";
+
+              return (
+                <div className="p-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 backdrop-blur-md text-amber-200 flex items-start gap-3 shadow-lg">
+                  <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-amber-300 flex items-center gap-2">
+                      <span>Peringatan: Generasi Degraded</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-200">
+                        {generatedOutputs.filter((o) => o.degraded).length} / {generatedOutputs.length} GAMBAR
+                      </span>
+                    </h4>
+                    <p className="text-xs text-amber-200/80 leading-relaxed">
+                      {degradedMsg}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Generated Results Gallery (Section 25) */}
             <ResultGallery

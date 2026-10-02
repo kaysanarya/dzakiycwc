@@ -312,12 +312,34 @@ export function ResultGallery({
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#00030a]/70 text-[#3781fc]/50 backdrop-blur-md border border-white/10">
                     {out.angle}
                   </span>
-                  {out.degraded && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500 text-black border border-amber-400 flex items-center gap-1 shadow-xs">
+                  {(out.method === "demo" || out.imageUrl.includes("/demo/") || out.imageUrl.endsWith(".svg")) ? (
+                    <span
+                      title="Output demonstrasi/pratinjau (aset simulasi, bukan hasil AI asli)"
+                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-600 text-white border border-indigo-400 flex items-center gap-1 shadow-xs pointer-events-auto"
+                    >
+                      <Info className="w-3 h-3 text-indigo-200" />
+                      <span>DEMO SIMULASI</span>
+                    </span>
+                  ) : out.degraded ? (
+                    <span
+                      title={
+                        out.method === "stability-core" || out.method === "replicate-flux"
+                          ? "Fallback inpaint: dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat"
+                          : "Dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat"
+                      }
+                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500 text-black border border-amber-400 flex items-center gap-1 shadow-xs pointer-events-auto"
+                    >
                       <AlertTriangle className="w-3 h-3 text-black" />
                       <span>DEGRADED ({out.method || "fallback"})</span>
                     </span>
-                  )}
+                  ) : out.method === "stability-sd3-img2img" ? (
+                    <span
+                      title="Metode Image-to-Image: memakai foto produk asli sebagai panduan difusi (presisi parsial)"
+                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-600/80 text-white border border-blue-400/40 flex items-center gap-1 shadow-xs pointer-events-auto"
+                    >
+                      <span>SD3 IMG2IMG (PARSIAL)</span>
+                    </span>
+                  ) : null}
                   <span
                     className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded backdrop-blur-xs ${
                       out.consistencyScore === null
@@ -378,6 +400,23 @@ export function ResultGallery({
               {/* Consistency Breakdown */}
               <div className="p-3.5 space-y-3">
                 <ConsistencyBadge validation={out.validation} threshold={90} />
+
+                {/* Degradation/Demo Notice in Card */}
+                {out.method === "demo" ? (
+                  <p className="text-[10px] text-indigo-200/90 bg-indigo-500/10 border border-indigo-400/20 rounded-lg p-2 leading-tight flex items-start gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>Simulasi pratinjau: aset demonstrasi contoh, bukan hasil model AI asli.</span>
+                  </p>
+                ) : out.degraded ? (
+                  <p className="text-[10px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 leading-tight flex items-start gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                    <span>
+                      {out.method === "stability-core" || out.method === "replicate-flux"
+                        ? "Fallback inpainting: dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat."
+                        : "Dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat."}
+                    </span>
+                  </p>
+                ) : null}
 
                 {/* POST-PROCESSING BAR (Requirement 14: Upscale HD, Remove Background, Magic Retouch) */}
                 <div className="pt-2 border-t border-white/[0.06] flex flex-wrap items-center gap-1.5 justify-between">

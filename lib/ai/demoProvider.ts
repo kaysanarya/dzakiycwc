@@ -153,7 +153,7 @@ export class DemoAIProvider implements AIProvider {
           "Verifikasi konsistensi fitur fisik produk lolos standar e-commerce.",
         ],
         validatedAt: new Date().toISOString(),
-        isFallback: false,
+        isFallback: true,
       };
 
       outputs.push({
@@ -162,11 +162,19 @@ export class DemoAIProvider implements AIProvider {
         thumbnailUrl: finalImageUrl,
         prompt: promptData.generationPrompt,
         angle: angleName,
-        consistencyScore,
-        validation,
-        status: validation.status === "pass" ? "passed" : "rejected",
+        consistencyScore: null,
+        validation: {
+          ...validation,
+          score: null,
+          status: "unverified",
+          isFallback: true,
+          notes: ["Simulasi Demo: Output ilustrasi pratinjau, bukan hasil AI asli."],
+        },
+        status: "passed",
         createdAt: new Date().toISOString(),
         aspectRatio: input.direction.aspectRatio,
+        degraded: true,
+        method: "demo",
       });
     }
 

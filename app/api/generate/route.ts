@@ -159,7 +159,14 @@ export async function POST(req: NextRequest) {
     const degradedCount = validatedOutputs.filter((o) => o.degraded).length;
 
     if (hasDegraded) {
-      warnings.push(`${degradedCount} dari ${validatedOutputs.length} gambar dihasilkan melalui fallback (degraded tanpa foto produk).`);
+      const inpaintFallbackCount = validatedOutputs.filter(
+        (o) => o.method === "stability-core" || o.method === "replicate-flux"
+      ).length;
+      if (inpaintFallbackCount === degradedCount) {
+        warnings.push(`${degradedCount} dari ${validatedOutputs.length} gambar beralih ke fallback text-to-image karena inpainting gagal (dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat).`);
+      } else {
+        warnings.push(`${degradedCount} dari ${validatedOutputs.length} gambar dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat.`);
+      }
     }
 
     return NextResponse.json(

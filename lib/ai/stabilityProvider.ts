@@ -228,7 +228,12 @@ export class StabilityAIProvider implements AIProvider {
           checks: {},
           status: "unverified",
           notes: [
-            "Visual consistency check skipped: Stability AI is generation-only and does not support multimodal self-audit. Independent validation available at Step 6.",
+            usedMethod === "stability-inpaint"
+              ? "Metode: Stability Inpaint (Presisi Tinggi — area produk asli dipertahankan menggunakan binary mask)."
+              : usedMethod === "stability-sd3-img2img"
+              ? "Metode: Stability SD3 Image-to-Image (Presisi Menengah/Parsial — memakai foto produk asli sebagai panduan difusi)."
+              : "Metode: Stability Core Fallback (Degraded — text-to-image tanpa foto produk asli).",
+            "Audit visual dilewati: provider generation-only.",
           ],
           isFallback: true,
           validatedAt: new Date().toISOString(),
