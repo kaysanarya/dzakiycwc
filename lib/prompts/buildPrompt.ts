@@ -15,12 +15,21 @@ export interface PromptBuildParams {
   variationIndex?: number;
 }
 
-export function buildStructuredPrompt(params: PromptBuildParams): {
+export interface StructuredPromptOutput {
   systemPrompt: string;
   generationPrompt: string;
   negativePrompt: string;
   structuredDirectives: Record<string, unknown>;
-} {
+  diffusionParams: {
+    denoisingStrength: number;
+    guidanceScale: number;
+    referenceStrength: number;
+    controlnetStrength: number;
+    styleWeight: number;
+  };
+}
+
+export function buildStructuredPrompt(params: PromptBuildParams): StructuredPromptOutput {
   const { blueprint, locks, direction, preservation, referenceAnalysis, variationIndex = 0 } = params;
 
   // 1. Locked attributes compilation
@@ -123,38 +132,94 @@ export function buildStructuredPrompt(params: PromptBuildParams): {
   // 6. Marketplace Preset specs
   const marketplaceSpec = `Marketplace target: ${direction.marketplacePreset.toUpperCase()} framing with aspect ratio ${direction.aspectRatio}. Product scale safe margins respected.`;
 
+  // 7. Reference Strength computation (0 - 100 -> float 0.0 - 1.0)
+  const refStrengthNum = Math.max(0, Math.min(100, preservation.referenceStrength ?? 70));
+  const refWeight = Number((refStrengthNum / 100).toFixed(2));
+
+  // Reference Style Adapter section
+  let referenceStyleSection = "";
+  if (referenceAnalysis && refWeight > 0.05) {
+    referenceStyleSection = `
+[STYLE ADAPTER & REFERENCE GUIDANCE (WEIGHT: ${refWeight} / 1.00)]:
+- Photography Reference Style Transfer Active: ${refStrengthNum}% influence
+- Key Light Quality: ${referenceAnalysis.lightQuality}
+- Lighting Direction: ${referenceAnalysis.lightingDirection}
+- Color Temperature & Tone: ${referenceAnalysis.colorTemperature}
+- Studio Environment Background: ${referenceAnalysis.backgroundStyle}
+- Ground Shadow Characteristic: ${referenceAnalysis.shadowType}
+- Framing & Optical Composition: ${referenceAnalysis.framingComposition}
+- Atmosphere & Mood: ${referenceAnalysis.mood}
+- INSTRUCTION: Apply the photographic lighting setup, tonal curve, and aesthetic mood of the reference at ${refStrengthNum}% intensity to illuminate the scene, without altering the product's physical identity.`;
+  } else {
+    referenceStyleSection = `
+[COMMERCIAL STUDIO LIGHTING SETUP (WEIGHT: ${refWeight} / 1.00)]:
+- Key Light: Cinematic 5000K daylight-balanced softbox positioned 45° camera left
+- Fill Light: Gentle diffuse ambient bounce reducing harsh dark pockets to natural catalog ratio (3:1)
+- Rim / Kicker: High-precision edge highlight contouring the product silhouette and separating it from the background
+- Shadow Architecture: Physically grounded raytraced contact shadow, ambient occlusion crease where product contacts ground plane, and soft diffuse penumbra falloff.`;
+  }
+
+  // 8. Calculate diffusion parameters for image-to-image & diffusion models
+  // Range: 0.65 - 0.80 as requested
+  const baseDenoising = preservation.strictProductMode ? 0.70 : 0.76;
+  const detailOffset = (100 - (preservation.detailPreservation ?? 100)) * 0.0008;
+  const denoisingStrength = Number(Math.min(0.80, Math.max(0.65, baseDenoising + detailOffset)).toFixed(2));
+  const guidanceScale = 7.5;
+  const controlnetStrength = preservation.strictProductMode ? 0.90 : 0.75;
+
   // Final Assembly
-  const systemPrompt = `You are VELLUM AI Agent, an elite Product Photography Director.
-PHILOSOPHY: PRODUCT = LOCKED | PHOTOGRAPHY = GENERATIVE.
-The uploaded product images are the authoritative source of truth for product identity. Do not redesign, reinterpret, beautify, simplify, replace, merge, or invent product features. Preserve geometry, proportions, components, colors, materials, textures, logos, stitching, ornaments, and construction exactly when those attributes are locked. Reference images may influence photography direction only when product-design borrowing is disabled.
-Your mission is to direct commercial-grade product photography that makes products look ready for high-end retail, luxury ecommerce, and global advertising.
-Crucially: You modify lighting, shadows, camera angles, backgrounds, and framing, but NEVER alter the physical geometry or identity of the original product.`;
+  const systemPrompt = `You are VELLUM AI Agent, an elite Commercial Product Photography Director.
+PHILOSOPHY: PRODUCT = LOCKED | ENVIRONMENT & PHOTOGRAPHY = GENERATIVE RE-RENDER.
+DO NOT just paste the original image. You MUST generate a completely new commercial photography studio environment, with dramatic professional lighting, raytraced shadows, and high-end set design, while strictly maintaining the geometric shape, color, and texture of the main product.
+The uploaded product images are the authoritative physical ground truth. Preserve geometry, proportions, components, colors, materials, textures, logos, stitching, ornaments, and construction exactly when those attributes are locked.
+Do not perform a basic 2D cut-and-paste, sticker overlay, or flat background swap. Re-render the entire visual environment around the product with realistic 3D diffusion depth, volumetric studio lighting, global illumination, raytraced ambient occlusion, and authentic physics-based contact shadows.`;
 
-  const generationPrompt = `[COMMERCIAL PRODUCT PHOTOGRAPHY]
-SUBJECT: Authentic ${blueprint.category} (${blueprint.shape}), material: ${blueprint.material}, color: ${blueprint.color}.
-VISUAL SPECIFICATIONS:
-- ${lockedFeatures.join("\n- ")}
+  const generationPrompt = `[COMMERCIAL STUDIO PRODUCT PHOTOGRAPHY]
+MANDATORY DIRECTIVE: DO NOT just paste the original image. You MUST generate a completely new commercial photography studio environment, with dramatic professional lighting, raytraced shadows, and high-end set design, while strictly maintaining the geometric shape, color, and texture of the main product.
 
-PHOTOGRAPHY DIRECTION:
-- Camera Angle: ${angleDirective}
-- Environment / Background: ${backgroundDesc}
-- Model Presence: ${modelDirective}
-- Lighting: ${referenceAnalysis?.lightingDirection || "Cinematic 3-point softbox studio lighting with razor-sharp rim highlights"}
+=== 1. AUTHORITATIVE SUBJECT: PHYSICAL PRODUCT (LOCKED GEOMETRY) ===
+- Category: ${blueprint.category} (${blueprint.subcategory || blueprint.shape})
+- Silhouette & Shape: ${blueprint.shape}
+- Primary Material & Finish: ${blueprint.material}
+- Color Specification: ${blueprint.color}
+- Surface Texture & Grain: ${blueprint.texture}
+- Physical Proportions: ${blueprint.proportions}
+- Construction & Assembly: ${blueprint.construction}
+- LOCKED ATTRIBUTES SPECIFICATIONS:
+  * ${lockedFeatures.join("\n  * ")}
+- SUBJECT LOCK DIRECTIVE: Preserve exact physical identity, contours, brand logos, strap/buckle geometry, and material sheen. Zero deformation or morphological drift.
+
+=== 2. GENERATIVE ENVIRONMENT & STUDIO SET DESIGN (RE-RENDER) ===
+- Studio Environment: ${backgroundDesc}
+- Staging & Set Design: Premium commercial studio staging, professional product riser/pedestal, pristine surface finish with micro-reflections.
+- Camera Perspective: ${angleDirective}
+- Model Presence & Placement: ${modelDirective}
+- Target Marketplace: ${marketplaceSpec}
+
+=== 3. LIGHTING ARCHITECTURE & SHADOW PHYSICS ===
+${referenceStyleSection}
+
+=== 4. DIFFUSION ENGINE DIRECTIVES ===
+- Denoising Space: Re-render background, lighting, and ambient light bounce with high diffusion latitude (${denoisingStrength} denoising strength) while locking product structure.
+- Reference Direction Strength: ${refStrengthNum}/100 (${refWeight})
 - Detail Preservation Level: ${preservation.detailPreservation}/100
-- Reference Direction Strength: ${preservation.referenceStrength}/100
-- ${marketplaceSpec}
-
-STRICT CONSTRAINTS:
+- Rendering Fidelity: Authentic 8K commercial catalog resolution, Hasselblad medium format optical sharpness, photorealistic global illumination, physically accurate raytraced contact shadows.
 ${strictEnforcement}
-${ignoreReferenceDesign}
-Capture authentic micro-textures, true-to-life reflections, and physically accurate contact shadows. 8k resolution, razor sharp optical focus, commercial catalog grade.`;
+${ignoreReferenceDesign}`;
 
-  const negativePrompt = `deformed product, altered logo, changed heel height, wrong sole, morphed shape, extra straps, missing buckle, distorted proportions, low resolution, blurry texture, generic product replacement, synthetic artifacts, warped lines, wrong color, redesigned silhouette`;
+  const negativePrompt = `flat 2d cutout, copy pasted product, sticker effect, floating product, missing contact shadows, no ambient occlusion, harsh cutout borders, amateur snapshot, distorted product geometry, altered logo, deformed heel, wrong sole, morphed shape, extra straps, missing buckle, distorted proportions, low resolution, blurry texture, generic product replacement, synthetic artifacts, warped lines, wrong color, redesigned silhouette, oversaturated CGI`;
 
   return {
     systemPrompt,
     generationPrompt,
     negativePrompt,
+    diffusionParams: {
+      denoisingStrength,
+      guidanceScale,
+      referenceStrength: refWeight,
+      controlnetStrength,
+      styleWeight: refWeight,
+    },
     structuredDirectives: {
       category: blueprint.category,
       lockedAttributes: lockedFeatures,
@@ -165,6 +230,10 @@ Capture authentic micro-textures, true-to-life reflections, and physically accur
       strictMode: preservation.strictProductMode,
       detailPreservation: preservation.detailPreservation,
       referenceStrength: preservation.referenceStrength,
+      denoisingStrength,
+      guidanceScale,
+      controlnetStrength,
+      styleWeight: refWeight,
     },
   };
 }

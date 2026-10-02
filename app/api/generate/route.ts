@@ -73,6 +73,13 @@ export async function POST(req: NextRequest) {
       apiKey: validation.apiKey,
     };
 
+    console.log(
+      `[Pipeline /api/generate] Provider: ${validation.provider} | ` +
+      `Reference Strength: ${preservation?.referenceStrength ?? 70}% | ` +
+      `Strict Mode: ${preservation?.strictProductMode ?? true} | ` +
+      `Reference Images: ${referenceImages?.length || 0}`
+    );
+
     const rawOutputs: GeneratedOutput[] = await generateImages(
       {
         blueprint,

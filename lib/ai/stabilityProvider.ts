@@ -56,7 +56,7 @@ export class StabilityAIProvider implements AIProvider {
         ? direction.cameraAngle
         : angleVariations[index % angleVariations.length];
 
-      const { generationPrompt, negativePrompt } = buildStructuredPrompt({
+      const { generationPrompt, negativePrompt, diffusionParams } = buildStructuredPrompt({
         blueprint,
         locks,
         direction: { ...direction, cameraAngle: (isExplicitAngle ? direction.cameraAngle : angleName) as CameraAngle },
@@ -65,33 +65,80 @@ export class StabilityAIProvider implements AIProvider {
         variationIndex: index,
       });
 
-      const formData = new FormData();
-      formData.append("prompt", generationPrompt.slice(0, 1000));
-      formData.append("negative_prompt", negativePrompt.slice(0, 500));
-      formData.append("aspect_ratio", targetRatio);
-      formData.append("output_format", "png");
+      let base64Image: string | undefined;
 
-      const res = await fetch("https://api.stability.ai/v2beta/stable-image/generate/core", {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${this.apiKey}`,
-          accept: "application/json",
-        },
-        signal: AbortSignal.timeout(90_000),
-        body: formData,
-      });
+      // 1. Try SD3 Image-to-Image with diffusion denoising strength (0.65 - 0.80)
+      if (input.sourceImages && input.sourceImages.length > 0) {
+        try {
+          const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
+            ? input.sourceImages[0].dataUrl.split(",")[1]
+            : input.sourceImages[0].dataUrl;
+          const mimeType = input.sourceImages[0].type || "image/jpeg";
+          const buffer = Buffer.from(rawBase64, "base64");
+          const blob = new Blob([buffer], { type: mimeType });
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        const errMsg =
-          errJson?.errors?.[0] ||
-          errJson?.message ||
-          `Stability AI error (HTTP ${res.status})`;
-        throw new Error(errMsg);
+          const sd3FormData = new FormData();
+          sd3FormData.append("prompt", generationPrompt.slice(0, 1000));
+          sd3FormData.append("negative_prompt", negativePrompt.slice(0, 500));
+          sd3FormData.append("image", blob, "source.jpg");
+          sd3FormData.append("mode", "image-to-image");
+          // Scaled diffusion denoising strength (0.65 - 0.80) to allow drastic environment & lighting re-rendering
+          sd3FormData.append("strength", String(diffusionParams.denoisingStrength));
+          sd3FormData.append("aspect_ratio", targetRatio);
+          sd3FormData.append("model", "sd3.5-large");
+          sd3FormData.append("output_format", "png");
+
+          const sd3Res = await fetch("https://api.stability.ai/v2beta/stable-image/generate/sd3", {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${this.apiKey}`,
+              accept: "application/json",
+            },
+            signal: AbortSignal.timeout(90_000),
+            body: sd3FormData,
+          });
+
+          if (sd3Res.ok) {
+            const sd3Data = await sd3Res.json();
+            base64Image = sd3Data.image;
+          } else {
+            console.warn(`Stability SD3 img2img returned ${sd3Res.status}, falling back to Stable Image Core.`);
+          }
+        } catch (sd3Err) {
+          console.warn("Stability SD3 img2img attempt notice:", sd3Err);
+        }
       }
 
-      const data = await res.json();
-      const base64Image = data.image;
+      // 2. Fallback to Stable Image Core if img2img was not applicable or failed
+      if (!base64Image) {
+        const formData = new FormData();
+        formData.append("prompt", generationPrompt.slice(0, 1000));
+        formData.append("negative_prompt", negativePrompt.slice(0, 500));
+        formData.append("aspect_ratio", targetRatio);
+        formData.append("output_format", "png");
+
+        const res = await fetch("https://api.stability.ai/v2beta/stable-image/generate/core", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${this.apiKey}`,
+            accept: "application/json",
+          },
+          signal: AbortSignal.timeout(90_000),
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          const errMsg =
+            errJson?.errors?.[0] ||
+            errJson?.message ||
+            `Stability AI error (HTTP ${res.status})`;
+          throw new Error(errMsg);
+        }
+
+        const data = await res.json();
+        base64Image = data.image;
+      }
 
       if (!base64Image) {
         throw new Error("Stability AI did not return image data.");

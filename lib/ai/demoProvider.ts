@@ -124,6 +124,8 @@ export class DemoAIProvider implements AIProvider {
         ? createStudioComposite({
           productDataUrl: sourceImg,
           referenceDataUrl: refImg,
+          referenceAnalysis: input.referenceAnalysis,
+          referenceStrength: input.preservation.referenceStrength,
           background: input.direction.background,
           customBackground: input.direction.customBackground,
           aspectRatio: input.direction.aspectRatio,

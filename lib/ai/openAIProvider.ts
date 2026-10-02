@@ -159,7 +159,8 @@ export class OpenAIProvider implements AIProvider {
           prompt: generationPrompt.slice(0, 3900), // DALL-E 3 prompt max 4000 chars
           n: 1,
           size,
-          quality: "standard",
+          quality: "hd",
+          style: "natural",
         }),
       });
 

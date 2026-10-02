@@ -238,29 +238,66 @@ Return JSON ONLY:
               ? input.sourceImages[0].dataUrl.split(",")[1]
               : input.sourceImages[0].dataUrl;
             const mimeType = input.sourceImages[0].type || "image/jpeg";
-            const strictPrompt = `CRITICAL INSTRUCTION: Keep the exact main product in this image COMPLETELY UNCHANGED (preserve its exact shape, geometry, texture, color, logo, and all small details). DO NOT redraw or redesign the product.
-Only perform background replacement and relighting.
-Change the background to a ${input.direction.background} environment.
-Adjust the lighting to look like high-end professional commercial photography.
-Camera Angle/Style: ${input.direction.cameraAngle}. Angle variation: Commercial Angle ${i + 1}.`;
+            const multimodalPrompt = `${promptData.systemPrompt}
+
+${promptData.generationPrompt}
+
+CRITICAL EXECUTION RULES FOR PRODUCT PHOTOGRAPHY DIRECTOR:
+1. RE-RENDER STUDIO ENVIRONMENT & LIGHTING:
+   - DO NOT just paste the original image. You MUST generate a completely new commercial photography studio environment, with dramatic professional lighting, raytraced shadows, and high-end set design, while strictly maintaining the geometric shape, color, and texture of the main product.
+   - Re-render the visual scene with realistic 3D diffusion depth, volumetric studio lighting, global illumination, and authentic raytraced contact shadows under the product base.
+   - Cast directional rim highlights matching the key light scrim to contour the product edges.
+
+2. PHYSICAL PRODUCT IDENTITY (STRICT GEOMETRY LOCK):
+   - The primary input image contains the authentic product to preserve.
+   - Maintain 100% fidelity to the physical geometry, branding/logos, stitching, hardware, strap placement, and material texture.
+   - Do NOT morph, warp, replace, simplify, or redesign the product.
+
+3. PERSPECTIVE & COMPOSITION:
+   - Perspective: Commercial Studio Angle ${i + 1} (${promptData.structuredDirectives.cameraAngle}).
+   - Aspect ratio: ${input.direction.aspectRatio}.
+   - Diffusion Denoising Latitude: ${promptData.diffusionParams.denoisingStrength} (high latitude for studio environment, zero drift for product core).
+`;
+
+            const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
+              { text: multimodalPrompt },
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: rawBase64,
+                },
+              },
+            ];
+
+            // If reference image provided, pass it as style guidance with its calculated reference strength
+            if (input.referenceImages && input.referenceImages.length > 0 && promptData.diffusionParams.referenceStrength > 0.05) {
+              const refImg = input.referenceImages[0];
+              const refBase64 = refImg.dataUrl.includes(",")
+                ? refImg.dataUrl.split(",")[1]
+                : refImg.dataUrl;
+              const refMime = refImg.type || "image/jpeg";
+              parts.push({
+                text: `[PHOTOGRAPHY STYLE & LIGHTING REFERENCE - INFLUENCE WEIGHT: ${(promptData.diffusionParams.referenceStrength * 100).toFixed(0)}%]:
+Extract ONLY the photographic lighting style, color temperature, shadow softness, and ambient studio mood from this reference image. DO NOT copy the product or objects from this reference image. Apply its lighting aesthetic onto the new scene at ${(promptData.diffusionParams.referenceStrength * 100).toFixed(0)}% intensity.`,
+              });
+              parts.push({
+                inlineData: {
+                  mimeType: refMime,
+                  data: refBase64,
+                },
+              });
+            }
 
             const payload = {
               contents: [
                 {
                   role: "user",
-                  parts: [
-                    { text: strictPrompt },
-                    {
-                      inlineData: {
-                        mimeType: mimeType,
-                        data: rawBase64,
-                      },
-                    },
-                  ],
+                  parts,
                 },
               ],
               generationConfig: {
                 responseModalities: ["TEXT", "IMAGE"],
+                temperature: 0.35,
               },
             };
 
@@ -288,13 +325,13 @@ Camera Angle/Style: ${input.direction.cameraAngle}. Angle variation: Commercial 
               continue;
             }
 
-            const parts = resJson?.candidates?.[0]?.content?.parts;
-            if (!parts || parts.length === 0) {
+            const resParts = resJson?.candidates?.[0]?.content?.parts;
+            if (!resParts || resParts.length === 0) {
               console.warn(`Multimodal model ${mmModel} returned empty parts, skipping.`);
               continue;
             }
 
-            const imagePart = parts.find(
+            const imagePart = resParts.find(
               (p: { inlineData?: { data?: string; mimeType?: string } }) => p.inlineData?.data
             );
             if (!imagePart) {
@@ -317,7 +354,7 @@ Camera Angle/Style: ${input.direction.cameraAngle}. Angle variation: Commercial 
             outputs.push({
               id: `gemini-gen-${Date.now()}-${i + 1}`,
               imageUrl,
-              prompt: strictPrompt,
+              prompt: promptData.generationPrompt,
               angle: `Commercial Angle ${i + 1}`,
               consistencyScore: validation.score,
               validation,

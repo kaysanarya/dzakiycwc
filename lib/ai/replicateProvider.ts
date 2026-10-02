@@ -50,7 +50,7 @@ export class ReplicateAIProvider implements AIProvider {
         ? direction.cameraAngle
         : angleVariations[index % angleVariations.length];
 
-      const { generationPrompt } = buildStructuredPrompt({
+      const { generationPrompt, negativePrompt, diffusionParams } = buildStructuredPrompt({
         blueprint,
         locks,
         direction: { ...direction, cameraAngle: (isExplicitAngle ? direction.cameraAngle : angleName) as CameraAngle },
@@ -59,58 +59,83 @@ export class ReplicateAIProvider implements AIProvider {
         variationIndex: index,
       });
 
-      const res = await fetch("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-          Prefer: "wait",
-        },
-        signal: AbortSignal.timeout(90_000),
-        body: JSON.stringify({
-          input: {
-            prompt: generationPrompt,
-            aspect_ratio: direction.aspectRatio === "9:16" ? "9:16" : direction.aspectRatio === "16:9" ? "16:9" : "1:1",
-            output_format: "webp",
-            output_quality: 90,
-          },
-        }),
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        const errMsg = errJson?.detail || `Replicate API error (HTTP ${res.status})`;
-        throw new Error(errMsg);
-      }
-
-      const data = await res.json();
       let imageUrl: string | undefined;
 
-      if (Array.isArray(data.output) && data.output.length > 0) {
-        imageUrl = data.output[0];
-      } else if (typeof data.output === "string") {
-        imageUrl = data.output;
+      // 1. Try SDXL image-to-image with diffusion denoising strength (0.65 - 0.80) if source product is available
+      if (input.sourceImages && input.sourceImages.length > 0) {
+        try {
+          const imgRes = await fetch("https://api.replicate.com/v1/models/stability-ai/sdxl/predictions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${this.apiKey}`,
+              "Content-Type": "application/json",
+              Prefer: "wait",
+            },
+            signal: AbortSignal.timeout(90_000),
+            body: JSON.stringify({
+              input: {
+                image: input.sourceImages[0].dataUrl,
+                prompt: generationPrompt,
+                negative_prompt: negativePrompt,
+                // Scaled diffusion denoising strength (0.65 - 0.80) for background and lighting re-rendering
+                prompt_strength: diffusionParams.denoisingStrength,
+                guidance_scale: diffusionParams.guidanceScale,
+                refine: "expert_ensemble_refiner",
+                apply_watermark: false,
+              },
+            }),
+          });
+
+          if (imgRes.ok) {
+            const imgData = await imgRes.json();
+            if (Array.isArray(imgData.output) && imgData.output.length > 0) {
+              imageUrl = imgData.output[0];
+            } else if (typeof imgData.output === "string") {
+              imageUrl = imgData.output;
+            } else if (imgData.urls?.get) {
+              imageUrl = await this.pollPrediction(imgData.urls.get);
+            }
+          } else {
+            console.warn(`Replicate SDXL img2img returned ${imgRes.status}, falling back to Flux Schnell.`);
+          }
+        } catch (sdxlErr) {
+          console.warn("Replicate SDXL img2img attempt notice:", sdxlErr);
+        }
       }
 
-      // If still processing asynchronously, poll once or check status
-      if (!imageUrl && data.urls?.get) {
-        let attempts = 0;
-        while (!imageUrl && attempts < 15) {
-          await new Promise((r) => setTimeout(r, 2000));
-          const pollRes = await fetch(data.urls.get, {
-            headers: { Authorization: `Bearer ${this.apiKey}` },
-            signal: AbortSignal.timeout(15_000),
-          });
-          if (pollRes.ok) {
-            const pollData = await pollRes.json();
-            if (pollData.status === "succeeded") {
-              imageUrl = Array.isArray(pollData.output) ? pollData.output[0] : pollData.output;
-              break;
-            } else if (pollData.status === "failed") {
-              throw new Error(`Replicate prediction failed: ${pollData.error}`);
-            }
-          }
-          attempts++;
+      // 2. Fallback to Flux Schnell text-to-image with full studio prompt
+      if (!imageUrl) {
+        const res = await fetch("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+            Prefer: "wait",
+          },
+          signal: AbortSignal.timeout(90_000),
+          body: JSON.stringify({
+            input: {
+              prompt: generationPrompt,
+              aspect_ratio: direction.aspectRatio === "9:16" ? "9:16" : direction.aspectRatio === "16:9" ? "16:9" : "1:1",
+              output_format: "webp",
+              output_quality: 90,
+            },
+          }),
+        });
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          const errMsg = errJson?.detail || `Replicate API error (HTTP ${res.status})`;
+          throw new Error(errMsg);
+        }
+
+        const data = await res.json();
+        if (Array.isArray(data.output) && data.output.length > 0) {
+          imageUrl = data.output[0];
+        } else if (typeof data.output === "string") {
+          imageUrl = data.output;
+        } else if (data.urls?.get) {
+          imageUrl = await this.pollPrediction(data.urls.get);
         }
       }
 
@@ -192,5 +217,26 @@ export class ReplicateAIProvider implements AIProvider {
       isFallback: true,
       validatedAt: new Date().toISOString(),
     };
+  }
+
+  private async pollPrediction(getUrl: string): Promise<string | undefined> {
+    let attempts = 0;
+    while (attempts < 15) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const pollRes = await fetch(getUrl, {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (pollRes.ok) {
+        const pollData = await pollRes.json();
+        if (pollData.status === "succeeded") {
+          return Array.isArray(pollData.output) ? pollData.output[0] : pollData.output;
+        } else if (pollData.status === "failed") {
+          throw new Error(`Replicate prediction failed: ${pollData.error}`);
+        }
+      }
+      attempts++;
+    }
+    return undefined;
   }
 }
