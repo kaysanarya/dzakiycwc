@@ -595,7 +595,50 @@ export const supabase = isSupabaseConfigured
 - [x] **F-12:** Implement TTL expiration for the in-memory rate limit map in `/api/concept-art`.
 - [x] **F-13:** Prevent `localStorage` quota crashes by storing thumbnails instead of full 10MB base64 images in history.
 
-### Tier 3: Nice-to-Have & Cleanup
 - [x] **F-14:** Include full `heelSpecs` properties in the blueprint cache key in `app/page.tsx`.
 - [x] **F-15:** Respect user-selected camera angle in OpenAI, Stability, and Replicate providers.
 - [x] **F-16:** Remove unused `lib/supabase/client.ts` and `@supabase/supabase-js` dependency.
+
+---
+
+## Section 6 — Aturan Anti-Silent-Failure (Pipeline AI Inpainting)
+
+> Ditetapkan berdasarkan audit forensik commit `a245d79` → `ff37740` (2026-10-02)
+
+1. **Dilarang return original saat gagal.** `removeBackground()` wajib throw `AiPipelineError("removeBackground")` jika semua strategi gagal. Mengembalikan foto asli sebagai "fallback" menghasilkan mask penuh hitam/putih dan menyebabkan inpainting memperburuk produk.
+2. **Dilarang catch tanpa rethrow di jalur generate.** Setiap `catch` pada jalur kritis (`removeBackground`, `generateInpaintingMask`, provider fetch utama) wajib log terstruktur lalu rethrow atau throw `AiPipelineError` bertype. Catch yang hanya `console.warn` + `return undefined` adalah silent failure.
+3. **Wajib validasi rasio mask sebelum kirim ke provider.** Jika rasio transparan < 1% atau > 99%, throw `AiPipelineError("mask")`. Mask hitam pekat (< 1% transparan) terjadi jika input buffer opaque (background removal tidak berjalan). Mask putih total (> 99%) terjadi jika produk terhapus sepenuhnya.
+4. **Image dan mask wajib berukuran PERSIS sama.** Urutan wajib: `forcePng` → `resize jika > 4MB` → `generateInpaintingMask(buf, width, height)`. Mask tidak boleh di-generate dari buffer berbeda ukuran. Kalau resize diperlukan pada mask, pakai kernel `nearest` + re-binarisasi (0/255).
+5. **Selalu cek `res.ok` sebelum membaca body.** Stability dan Replicate mengembalikan error detail dalam body hanya jika status bukan 2xx. Membaca body tanpa cek `ok` menyebabkan parse error dan kehilangan status asli. Error body wajib disanitasi dan dipotong max 300 karakter.
+6. **Dilarang key, header auth, atau base64 gambar masuk log.** Semua string error wajib melalui `sanitizeErrorMessage(err, [apiKey])` sebelum `console.error`. Regex sanitizer mencakup: `AIza...`, `sk-...`, `r8_...`, `Bearer ...`, `?key=...`, dan blob base64 > 100 karakter.
+7. **Hasil parsial harus ditangani di UI.** Frontend wajib memeriksa `genData.success === false` (bukan hanya `!res.ok`) karena HTTP 207 dianggap `ok` oleh browser `fetch`. Spinner wajib dihentikan di `finally`, dan error message harus ditampilkan tanpa crash.
+8. **BYOK harus mencakup semua provider.** `resolveServerProvider()` wajib mendeteksi Stability (`STABILITY_API_KEY`) dan Replicate (`REPLICATE_API_TOKEN`/`REPLICATE_API_KEY`) sebelum Gemini dan OpenAI. Provider tidak boleh hanya bisa diakses via env var hardcoded di route handler.
+
+---
+
+## Section 7 — RCA (Root Cause Analysis)
+
+> Berdasarkan BUKTI dari Fase 0 forensik dan Fase 2 verifikasi.
+
+### RCA-1: Mengapa mask hitam pekat terjadi?
+
+**Bukti:** `route.ts` L76 (sebelum fix): catch `rmErr` → `return img` (foto asli). Foto asli memiliki background opaque (alpha = 255 semua piksel). Saat `generateInpaintingMask()` dijalankan pada buffer opaque, semua piksel memiliki `alpha >= 128` → `maskData[i] = 0` → **mask hitam total** (semua area "keep"). Provider Stability/Replicate menerima mask hitam penuh = tidak ada area yang di-inpaint = hasil identik dengan input.
+
+**Bukti sekunder:** Fungsi `removeBackground()` lama (sebelum fix) juga berisi `|| process.env.STABILITY_API_KEY` di dalam body — artinya key Stability diambil dari env meskipun pipeline di-resolve sebagai "gemini". Ini menyembunyikan kegagalan nyata BYOK Stability.
+
+### RCA-2: Apa yang mengurangi waktu (paralelisme) vs menaikkan batas (maxDuration)?
+
+**Paralelisme (mengurangi waktu aktual):**
+- Sebelum: OpenAI provider menggunakan loop `for` + `await` sequential → 4 gambar × 90 detik = 360 detik worst case.
+- Sesudah: `Promise.allSettled` dengan concurrency limiter (3 in-flight) → batch pertama (3) berjalan paralel, sisa (1) jalan setelah batch. Total ~90 detik vs 360 detik.
+- Stability/Replicate sudah memiliki `Promise.allSettled` tapi tanpa concurrency cap → bisa overload API.
+
+**maxDuration (menaikkan batas waktu yang diizinkan Vercel):**
+- Sebelum: tidak ada `export const maxDuration` → default Vercel Hobby: 10 detik. Permintaan ke Stability (AbortSignal.timeout 90 detik) akan diputus paksa setelah 10 detik oleh Vercel, bukan oleh kode.
+- Sesudah: `maxDuration = 60` memberi Vercel izin menunggu hingga 60 detik sebelum memutus.
+- **CATATAN:** Batas 60 detik adalah setting yang dipilih; batas aktual bergantung pada plan Vercel pengguna (Hobby: 60 detik, Pro: 300 detik). Ini **TIDAK TERVERIFIKASI** secara langsung di repo — nilai 60 dipilih sebagai nilai aman untuk Hobby plan.
+
+### RCA-3: Apakah crash sharp terbukti?
+
+**TIDAK TERVERIFIKASI.** `sharp` tersedia di `node_modules` dan dapat di-`require()` dari CLI (terbukti via `node -e "require('sharp')"`). Namun `sharp` tidak tercantum di `package.json` (tidak ada di `dependencies` maupun `devDependencies`) — ini berarti ia ter-install sebagai transitive dependency. Tanpa `serverExternalPackages: ["sharp"]`, Next.js (webpack) berpotensi mencoba mem-bundle sharp beserta binary native-nya, yang dapat gagal di runtime Vercel. **Efek aktual dari tidak adanya config ini pada deployment Vercel belum terbukti di repo ini** — tidak ada error log runtime yang tersedia untuk dikonfirmasi.
+
