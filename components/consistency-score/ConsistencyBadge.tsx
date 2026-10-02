@@ -16,13 +16,18 @@ export function ConsistencyBadge({
 }: ConsistencyBadgeProps) {
   const { language } = useLanguage();
   const [expanded, setExpanded] = useState(false);
-  const isPassing = validation.score >= threshold;
+  const isUnverified = validation.score === null || validation.isFallback;
+  const isPassing = !isUnverified && validation.score! >= threshold;
 
   return (
     <div className="liquid-glass-subcard border border-white/[0.08] rounded-2xl p-3.5 shadow-2xs">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          {isPassing ? (
+          {isUnverified ? (
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-2xs">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+          ) : isPassing ? (
             <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shadow-2xs">
               <ShieldCheck className="w-4 h-4" />
             </div>
@@ -38,12 +43,16 @@ export function ConsistencyBadge({
               </span>
               <span
                 className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ${
-                  isPassing
+                  isUnverified
+                    ? "bg-amber-500/15 text-amber-300 border border-amber-400/30"
+                    : isPassing
                     ? "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30"
                     : "bg-rose-500/15 text-rose-300 border border-rose-400/30"
                 }`}
               >
-                {language === "id"
+                {isUnverified
+                  ? language === "id" ? "BELUM TERVERIFIKASI" : "UNVERIFIED"
+                  : language === "id"
                   ? isPassing
                     ? "LOLOS"
                     : "PERLU GENERASI ULANG"
@@ -53,7 +62,11 @@ export function ConsistencyBadge({
               </span>
             </div>
             <p className="text-[10px] text-white/60 font-medium">
-              {language === "id"
+              {isUnverified
+                ? language === "id"
+                  ? "Audit visual dilewati (provider tidak mendukung vision)"
+                  : "Visual audit skipped (provider does not support vision)"
+                : language === "id"
                 ? "Estimasi Konsistensi AI (Skor Fidelitas)"
                 : "AI Consistency Estimate (Fidelity Score)"}
             </p>
@@ -62,7 +75,7 @@ export function ConsistencyBadge({
 
         <div className="flex items-center gap-2">
           <span className="text-lg font-black font-mono tracking-tight text-white">
-            {validation.score}%
+            {validation.score !== null ? `${validation.score}%` : "N/A"}
           </span>
           <button
             type="button"

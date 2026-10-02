@@ -58,6 +58,7 @@ export interface ProductBlueprint {
   construction: string;
   visualNotes: string;
   confidence: number; // 0.0 - 1.0
+  isFallback?: boolean;
 }
 
 export interface ProductLocks {
@@ -196,9 +197,9 @@ export interface ValidationChecks {
 }
 
 export interface ValidationResult {
-  score: number; // 0 - 100
-  checks: ValidationChecks;
-  status: "pass" | "needs_regeneration";
+  score: number | null; // 0 - 100 or null if fallback
+  checks: Partial<ValidationChecks>;
+  status: "pass" | "needs_regeneration" | "unverified";
   notes?: string[];
   isFallback?: boolean;
   validatedAt: string;
@@ -210,11 +211,13 @@ export interface GeneratedOutput {
   thumbnailUrl?: string;
   prompt: string;
   angle: string;
-  consistencyScore: number;
+  consistencyScore: number | null;
   validation: ValidationResult;
   status: "passed" | "rejected" | "regenerated";
   createdAt: string;
   aspectRatio: AspectRatio;
+  degraded?: boolean;
+  method?: string;
 }
 
 export interface ReferenceAnalysis {

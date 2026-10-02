@@ -135,9 +135,22 @@ Return only valid raw JSON.`;
       );
       return parsed;
     } catch (err) {
-      const sanitized = sanitizeErrorMessage(err, [this.apiKey]);
-      console.error("Gemini analyzeProduct error:", sanitized);
-      throw new Error(sanitized);
+      const sanitized = sanitizeErrorMessage(err, [this.apiKey]).slice(0, 300);
+      console.warn(`[gemini] analyzeProduct vision failed: ${sanitized}`);
+      return {
+        category: input.categoryHint || "footwear",
+        subcategory: "Standard Commercial Product",
+        shape: "Preserved from source image silhouette",
+        proportions: "Standard commercial scale",
+        material: "Identified from source image",
+        color: "Preserved authentic tone",
+        texture: "Authentic surface grain",
+        components: ["Main body", "Support structure", "Base"],
+        construction: "Manufactured product",
+        visualNotes: `Analisis otomatis tidak tersedia (${sanitized}). Gunakan blueprint dasar.`,
+        confidence: 0,
+        isFallback: true,
+      };
     }
   }
 
@@ -370,6 +383,8 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
               status: validation.status === "pass" ? "passed" : "rejected",
               createdAt: new Date().toISOString(),
               aspectRatio: input.direction.aspectRatio,
+              degraded: false,
+              method: "gemini-multimodal",
             };
           } catch (mmErr) {
             const sanitized = sanitizeErrorMessage(mmErr, [this.apiKey]).slice(0, 300);
@@ -421,6 +436,8 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
               status: validation.status === "pass" ? "passed" : "rejected",
               createdAt: new Date().toISOString(),
               aspectRatio: input.direction.aspectRatio,
+              degraded: true,
+              method: "gemini-imagen",
             };
           }
         } else {
@@ -599,39 +616,22 @@ Return JSON ONLY:
         this.apiKey
       );
       return {
-        score: typeof parsed.score === "number" ? parsed.score : 94,
-        checks: parsed.checks || {
-          shape: 95,
-          color: 94,
-          material: 93,
-          logo: 92,
-          components: 95,
-          proportions: 94,
-        },
-        status: parsed.status === "needs_regeneration" ? "needs_regeneration" : "pass",
+        score: typeof parsed.score === "number" ? parsed.score : null,
+        checks: parsed.checks || {},
+        status: parsed.status === "needs_regeneration" ? "needs_regeneration" : typeof parsed.score === "number" && parsed.score >= 85 ? "pass" : "unverified",
         notes: Array.isArray(parsed.notes) ? parsed.notes : [],
         validatedAt: new Date().toISOString(),
         isFallback: false,
       };
     } catch (err) {
-      console.error(
-        "AI validation failed, returning structured fallback score:",
-        sanitizeErrorMessage(err, [this.apiKey])
-      );
+      const sanitized = sanitizeErrorMessage(err, [this.apiKey]).slice(0, 300);
+      console.warn(`[gemini] Visual validation failed, returning unverified status: ${sanitized}`);
       return {
-        score: 94,
-        checks: {
-          shape: 95,
-          color: 94,
-          material: 93,
-          logo: 92,
-          components: 95,
-          proportions: 94,
-          heel: input.blueprint.category === "footwear" ? 95 : undefined,
-        },
-        status: "pass",
+        score: null,
+        checks: {},
+        status: "unverified",
         notes: [
-          "VALIDATION FALLBACK: Visual validation API timeout/unsupported. Applied heuristic blueprint check.",
+          `Visual validation unavailable (${sanitized}). Skor tidak dapat diverifikasi secara otomatis.`,
         ],
         validatedAt: new Date().toISOString(),
         isFallback: true,

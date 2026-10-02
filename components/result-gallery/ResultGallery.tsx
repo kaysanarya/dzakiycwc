@@ -312,13 +312,22 @@ export function ResultGallery({
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#00030a]/70 text-[#3781fc]/50 backdrop-blur-md border border-white/10">
                     {out.angle}
                   </span>
+                  {out.degraded && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500 text-black border border-amber-400 flex items-center gap-1 shadow-xs">
+                      <AlertTriangle className="w-3 h-3 text-black" />
+                      <span>DEGRADED ({out.method || "fallback"})</span>
+                    </span>
+                  )}
                   <span
-                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded backdrop-blur-xs ${out.consistencyScore >= 90
+                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded backdrop-blur-xs ${
+                      out.consistencyScore === null
+                        ? "bg-slate-700/80 text-slate-200 border border-slate-600"
+                        : out.consistencyScore >= 90
                         ? "bg-emerald-700/90 text-white"
                         : "bg-amber-600/90 text-white"
-                      }`}
+                    }`}
                   >
-                    {out.consistencyScore}% Match
+                    {out.consistencyScore === null ? "UNVERIFIED" : `${out.consistencyScore}% Match`}
                   </span>
                   {isUpscaled && (
                     <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#1951fc] text-white shadow-xs">

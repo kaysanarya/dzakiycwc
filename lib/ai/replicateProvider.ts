@@ -66,6 +66,8 @@ export class ReplicateAIProvider implements AIProvider {
       });
 
       let imageUrl: string | undefined;
+      let usedMethod = "unknown";
+      let isDegraded = false;
 
       // 1. Try SDXL Inpainting with binary mask
       if (input.sourceImages && input.sourceImages.length > 0) {
@@ -111,6 +113,10 @@ export class ReplicateAIProvider implements AIProvider {
               imageUrl = imgData.output;
             } else if (imgData.urls?.get) {
               imageUrl = await this.pollPrediction(imgData.urls.get, signal);
+            }
+            if (imageUrl) {
+              usedMethod = "replicate-sdxl-inpaint";
+              isDegraded = false;
             }
           } else {
             const errText = await imgRes.text().catch(() => "");
@@ -162,6 +168,10 @@ export class ReplicateAIProvider implements AIProvider {
         } else if (data.urls?.get) {
           imageUrl = await this.pollPrediction(data.urls.get, signal);
         }
+        if (imageUrl) {
+          usedMethod = "replicate-flux";
+          isDegraded = true;
+        }
       }
 
       if (!imageUrl) {
@@ -177,18 +187,11 @@ export class ReplicateAIProvider implements AIProvider {
         imageUrl,
         prompt: generationPrompt,
         angle: angleName,
-        consistencyScore: 85,
+        consistencyScore: null,
         validation: {
-          score: 85,
-          checks: {
-            shape: 85,
-            color: 85,
-            material: 85,
-            logo: 85,
-            components: 85,
-            proportions: 85,
-          },
-          status: "pass",
+          score: null,
+          checks: {},
+          status: "unverified",
           notes: [
             "Visual consistency check skipped: Replicate FLUX model is generation-only and does not support multimodal self-audit. Independent validation available at Step 6.",
           ],
@@ -198,6 +201,8 @@ export class ReplicateAIProvider implements AIProvider {
         status: "passed",
         createdAt: new Date().toISOString(),
         aspectRatio: direction.aspectRatio,
+        degraded: isDegraded,
+        method: usedMethod,
       };
     };
 
@@ -243,17 +248,9 @@ export class ReplicateAIProvider implements AIProvider {
 
   async validateProductConsistency(input: ValidateConsistencyInput): Promise<ValidationResult> {
     return {
-      score: 85,
-      checks: {
-        shape: 85,
-        color: 85,
-        material: 85,
-        logo: 85,
-        components: 85,
-        proportions: 85,
-        heel: input.blueprint.category === "footwear" ? 85 : undefined,
-      },
-      status: "pass",
+      score: null,
+      checks: {},
+      status: "unverified",
       notes: [
         "Visual consistency check skipped: Replicate FLUX model is generation-only and does not support multimodal self-audit.",
       ],

@@ -466,12 +466,12 @@ export default function Home() {
       let retries = 0;
       const maxRetries = 2;
 
-      while (retries < maxRetries && finalOutputs.some((o) => o.consistencyScore < 85)) {
+      while (retries < maxRetries && finalOutputs.some((o) => o.consistencyScore !== null && o.consistencyScore < 85)) {
         retries++;
         setCurrentLogMessage(`STEP 6: Inconsistent output detected. Auto-regenerating attempt ${retries}/${maxRetries}...`);
 
         const regenPromises = finalOutputs.map(async (output: GeneratedOutput): Promise<GeneratedOutput> => {
-          if (output.consistencyScore >= 85) return output;
+          if (output.consistencyScore === null || output.consistencyScore >= 85) return output;
 
           try {
             const regenRes = await fetch("/api/generate", {
@@ -564,7 +564,7 @@ export default function Home() {
 
       // If still below 85 after max retries, tag with Warning: Low Consistency and rejected status
       finalOutputs = finalOutputs.map((o: GeneratedOutput) => {
-        if (o.consistencyScore < 85) {
+        if (o.consistencyScore !== null && o.consistencyScore < 85) {
           return {
             ...o,
             status: "rejected" as const,
@@ -587,10 +587,10 @@ export default function Home() {
       setCurrentLogMessage("Pipeline completed successfully. Product identity preserved.");
 
       // Save session to history
-      const avgScore = Math.round(
-        finalOutputs.reduce((acc, curr) => acc + curr.consistencyScore, 0) /
-          (finalOutputs.length || 1)
-      );
+      const scoredOutputs = finalOutputs.filter((o) => o.consistencyScore !== null);
+      const avgScore = scoredOutputs.length > 0
+        ? Math.round(scoredOutputs.reduce((acc, curr) => acc + (curr.consistencyScore ?? 0), 0) / scoredOutputs.length)
+        : 0;
 
       const historyItem: GenerationHistoryItem = {
         id: `session-${Date.now()}`,
@@ -895,6 +895,24 @@ export default function Home() {
               onOpenBlueprint={() => setIsBlueprintModalOpen(true)}
               currentLogMessage={currentLogMessage}
             />
+
+            {/* Degraded Generation Warning Banner */}
+            {generatedOutputs.some((o) => o.degraded) && (
+              <div className="p-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 backdrop-blur-md text-amber-200 flex items-start gap-3 shadow-lg">
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-amber-300 flex items-center gap-2">
+                    <span>Peringatan: Generasi Menggunakan Metode Fallback (Degraded)</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-200">
+                      {generatedOutputs.filter((o) => o.degraded).length} / {generatedOutputs.length} GAMBAR
+                    </span>
+                  </h4>
+                  <p className="text-xs text-amber-200/80 leading-relaxed">
+                    Sebagian atau seluruh gambar dihasilkan melalui fallback text-to-image tanpa foto produk (karena inpainting gagal). Detail fisik produk mungkin tidak akurat atau tidak mempertahankan geometri asli secara presisi.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Generated Results Gallery (Section 25) */}
             <ResultGallery

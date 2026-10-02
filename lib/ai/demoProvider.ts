@@ -31,10 +31,10 @@ export class DemoAIProvider implements AIProvider {
       input.categoryHint === "footwear" ||
       input.images.some(
         (img) =>
-          img.name.toLowerCase().includes("mule") ||
-          img.name.toLowerCase().includes("shoe") ||
-          img.name.toLowerCase().includes("heel") ||
-          img.name.toLowerCase().includes("footwear")
+          img.name?.toLowerCase().includes("mule") ||
+          img.name?.toLowerCase().includes("shoe") ||
+          img.name?.toLowerCase().includes("heel") ||
+          img.name?.toLowerCase().includes("footwear")
       );
 
     if (isFootwear) {

@@ -105,9 +105,16 @@ export class OpenAIProvider implements AIProvider {
         }
       }
     } catch (err) {
-      console.warn("OpenAI vision analysis fallback:", sanitizeErrorMessage(err, [this.apiKey]));
+      const sanitized = sanitizeErrorMessage(err, [this.apiKey]).slice(0, 300);
+      console.warn(`[openai] analyzeProduct vision failed: ${sanitized}`);
     }
-    return this.demoFallback.analyzeProduct(input);
+    const fallback = await this.demoFallback.analyzeProduct(input);
+    return {
+      ...fallback,
+      confidence: 0,
+      isFallback: true,
+      visualNotes: "Blueprint default (OpenAI Vision tidak tersedia atau gagal diproses).",
+    };
   }
 
   async analyzeReference(input: AnalyzeReferenceInput): Promise<ReferenceAnalysis> {
@@ -204,9 +211,11 @@ export class OpenAIProvider implements AIProvider {
         angle: angleName,
         consistencyScore: validation.score,
         validation,
-        status: validation.score >= 85 ? "passed" : "rejected",
+        status: validation.score !== null && validation.score >= 85 ? "passed" : "rejected",
         createdAt: new Date().toISOString(),
         aspectRatio: direction.aspectRatio,
+        degraded: true,
+        method: "openai-dalle3",
       };
     };
 
@@ -331,16 +340,9 @@ Return JSON ONLY:
             this.apiKey
           );
           return {
-            score: typeof parsed.score === "number" ? parsed.score : 85,
-            checks: parsed.checks || {
-              shape: 85,
-              color: 85,
-              material: 85,
-              logo: 85,
-              components: 85,
-              proportions: 85,
-            },
-            status: parsed.status === "needs_regeneration" ? "needs_regeneration" : "pass",
+            score: typeof parsed.score === "number" ? parsed.score : null,
+            checks: parsed.checks || {},
+            status: parsed.status === "needs_regeneration" ? "needs_regeneration" : typeof parsed.score === "number" && parsed.score >= 85 ? "pass" : "unverified",
             notes: Array.isArray(parsed.notes) ? parsed.notes : ["OpenAI GPT-4o-mini multimodal validation complete."],
             validatedAt: new Date().toISOString(),
             isFallback: false,
@@ -348,21 +350,14 @@ Return JSON ONLY:
         }
       }
     } catch (err: unknown) {
-      console.warn("OpenAI visual validation fallback:", sanitizeErrorMessage(err, [this.apiKey]));
+      const sanitized = sanitizeErrorMessage(err, [this.apiKey]).slice(0, 300);
+      console.warn(`[openai] Visual validation failed, returning unverified status: ${sanitized}`);
     }
 
     return {
-      score: 85,
-      checks: {
-        shape: 85,
-        color: 85,
-        material: 85,
-        logo: 85,
-        components: 85,
-        proportions: 85,
-        heel: input.blueprint.category === "footwear" ? 85 : undefined,
-      },
-      status: "pass",
+      score: null,
+      checks: {},
+      status: "unverified",
       notes: [
         "Visual consistency check skipped: provider does not support multimodal self-audit. Independent validation available at Step 6.",
       ],

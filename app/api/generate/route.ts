@@ -101,15 +101,16 @@ export async function POST(req: NextRequest) {
     );
 
     // Step 2: Analyze Reference if provided (optional — failure is not fatal)
+    const warnings: string[] = [];
     let referenceAnalysis = undefined;
     if (referenceImages && referenceImages.length > 0) {
       try {
         referenceAnalysis = await analyzeReference({ images: referenceImages });
       } catch (refErr: unknown) {
-        // Reference analysis is optional; log but do not abort pipeline
         if (refErr instanceof Error && refErr.name === "AbortError") throw refErr;
         const safeMsg = sanitizeErrorMessage(refErr, [activeKey]).slice(0, 200);
-        console.error(`[Pipeline /api/generate] Reference analysis warning (non-fatal): ${safeMsg}`);
+        console.warn(`[Pipeline /api/generate] Reference analysis warning (non-fatal): ${safeMsg}`);
+        warnings.push(`Analisis referensi gagal (${safeMsg}), menggunakan preset pencahayaan default.`);
       }
     }
 
@@ -145,7 +146,7 @@ export async function POST(req: NextRequest) {
 
     // Visual Validation & Rejection handling
     const validatedOutputs = rawOutputs.map((output) => {
-      if (output.consistencyScore < 85) {
+      if (output.consistencyScore !== null && output.consistencyScore < 85) {
         return { ...output, status: "rejected" as const };
       }
       return output;
@@ -154,6 +155,12 @@ export async function POST(req: NextRequest) {
     const activeProvider = getAIProvider(providerOptions);
     const failedCount = Math.max(0, requestedCount - validatedOutputs.length);
     const isPartial = failedCount > 0 && validatedOutputs.length > 0;
+    const hasDegraded = validatedOutputs.some((o) => o.degraded);
+    const degradedCount = validatedOutputs.filter((o) => o.degraded).length;
+
+    if (hasDegraded) {
+      warnings.push(`${degradedCount} dari ${validatedOutputs.length} gambar dihasilkan melalui fallback (degraded tanpa foto produk).`);
+    }
 
     return NextResponse.json(
       {
@@ -163,6 +170,9 @@ export async function POST(req: NextRequest) {
         referenceAnalysis,
         outputs: validatedOutputs,
         failedCount,
+        hasDegraded,
+        degradedCount,
+        warnings: warnings.length > 0 ? warnings : undefined,
       },
       {
         status: isPartial ? 207 : 200,

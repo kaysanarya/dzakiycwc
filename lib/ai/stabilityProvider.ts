@@ -72,6 +72,8 @@ export class StabilityAIProvider implements AIProvider {
       });
 
       let base64Image: string | undefined;
+      let usedMethod = "unknown";
+      let isDegraded = false;
 
       // 1. Try True Inpainting (Background Replacement around transparent product)
       if (input.sourceImages && input.sourceImages.length > 0) {
@@ -107,6 +109,8 @@ export class StabilityAIProvider implements AIProvider {
           if (inpaintRes.ok) {
             const inpaintData = await inpaintRes.json();
             base64Image = inpaintData.image;
+            usedMethod = "stability-inpaint";
+            isDegraded = false;
           } else {
             const errText = await inpaintRes.text().catch(() => "");
             const sanitized = sanitizeErrorMessage(
@@ -155,6 +159,8 @@ export class StabilityAIProvider implements AIProvider {
           if (sd3Res.ok) {
             const sd3Data = await sd3Res.json();
             base64Image = sd3Data.image;
+            usedMethod = "stability-sd3-img2img";
+            isDegraded = false;
           } else {
             const errText = await sd3Res.text().catch(() => "");
             const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
@@ -197,6 +203,8 @@ export class StabilityAIProvider implements AIProvider {
 
         const data = await res.json();
         base64Image = data.image;
+        usedMethod = "stability-core";
+        isDegraded = true;
       }
 
       if (!base64Image) {
@@ -214,18 +222,11 @@ export class StabilityAIProvider implements AIProvider {
         imageUrl,
         prompt: generationPrompt,
         angle: angleName,
-        consistencyScore: 85,
+        consistencyScore: null,
         validation: {
-          score: 85,
-          checks: {
-            shape: 85,
-            color: 85,
-            material: 85,
-            logo: 85,
-            components: 85,
-            proportions: 85,
-          },
-          status: "pass",
+          score: null,
+          checks: {},
+          status: "unverified",
           notes: [
             "Visual consistency check skipped: Stability AI is generation-only and does not support multimodal self-audit. Independent validation available at Step 6.",
           ],
@@ -235,6 +236,8 @@ export class StabilityAIProvider implements AIProvider {
         status: "passed",
         createdAt: new Date().toISOString(),
         aspectRatio: direction.aspectRatio,
+        degraded: isDegraded,
+        method: usedMethod,
       };
     };
 
@@ -280,17 +283,9 @@ export class StabilityAIProvider implements AIProvider {
 
   async validateProductConsistency(input: ValidateConsistencyInput): Promise<ValidationResult> {
     return {
-      score: 85,
-      checks: {
-        shape: 85,
-        color: 85,
-        material: 85,
-        logo: 85,
-        components: 85,
-        proportions: 85,
-        heel: input.blueprint.category === "footwear" ? 85 : undefined,
-      },
-      status: "pass",
+      score: null,
+      checks: {},
+      status: "unverified",
       notes: [
         "Visual consistency check skipped: Stability AI is generation-only and does not support vision evaluation.",
       ],
