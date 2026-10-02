@@ -12,9 +12,9 @@ import {
   ValidationResult,
 } from "@/types";
 import { buildStructuredPrompt } from "@/lib/prompts/buildPrompt";
-import { DemoAIProvider } from "./demoProvider";
 import { parseAIJsonResponse } from "./safeJson";
 import { sanitizeErrorMessage } from "@/lib/auth/serverAuth";
+import { AiPipelineError } from "./AiPipelineError";
 
 export class GeminiAIProvider implements AIProvider {
   name = "Google Gemini Multimodal + Imagen";
@@ -23,7 +23,6 @@ export class GeminiAIProvider implements AIProvider {
   private visionModel: string;
   private imageModel: string;
   private validationModel: string;
-  private demoFallback = new DemoAIProvider();
 
   constructor(options: {
     apiKey: string;
@@ -209,10 +208,10 @@ Return JSON ONLY:
   }
 
   async generateProductImages(input: GenerateImagesInput): Promise<GeneratedOutput[]> {
-    const outputs: GeneratedOutput[] = [];
     const count = Math.min(Math.max(1, input.count), 8);
+    const signal = (input as { signal?: AbortSignal }).signal;
 
-    for (let i = 0; i < count; i++) {
+    const generateSingleImage = async (i: number): Promise<GeneratedOutput> => {
       const promptData = buildStructuredPrompt({
         blueprint: input.blueprint,
         locks: input.locks,
@@ -222,17 +221,17 @@ Return JSON ONLY:
         variationIndex: i,
       });
 
-      let generatedRealImage = false;
+      let lastError: string | undefined;
+      let lastStatus: number | undefined;
 
       // 1. Try Multimodal Gemini Image Generation with strict product lock prompt
-      if (!generatedRealImage && input.sourceImages && input.sourceImages.length > 0) {
+      if (input.sourceImages && input.sourceImages.length > 0) {
         const multimodalModels = [
           "gemini-2.0-flash-preview-image-generation",
           "gemini-2.0-flash-exp",
         ];
 
         for (const mmModel of multimodalModels) {
-          if (generatedRealImage) break;
           try {
             const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
               ? input.sourceImages[0].dataUrl.split(",")[1]
@@ -309,14 +308,17 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                signal: AbortSignal.timeout(90_000),
+                signal: signal ?? AbortSignal.timeout(90_000),
                 body: JSON.stringify(payload),
               }
             );
 
             if (!mmRes.ok) {
-              const errText = await mmRes.text();
-              console.warn(`Multimodal model ${mmModel} returned ${mmRes.status}:`, errText);
+              const errText = await mmRes.text().catch(() => "");
+              const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
+              console.warn(`[gemini] Multimodal model ${mmModel} HTTP ${mmRes.status}: ${sanitized}`);
+              lastError = sanitized;
+              lastStatus = mmRes.status;
               continue;
             }
 
@@ -324,13 +326,16 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
 
             // Check for API-level error in response body
             if (resJson?.error) {
-              console.warn(`Multimodal model ${mmModel} API error:`, resJson.error.message);
+              const sanitized = sanitizeErrorMessage(new Error(resJson.error.message || "API error"), [this.apiKey]).slice(0, 300);
+              console.warn(`[gemini] Multimodal model ${mmModel} API error: ${sanitized}`);
+              lastError = sanitized;
               continue;
             }
 
             const resParts = resJson?.candidates?.[0]?.content?.parts;
             if (!resParts || resParts.length === 0) {
-              console.warn(`Multimodal model ${mmModel} returned empty parts, skipping.`);
+              console.warn(`[gemini] Multimodal model ${mmModel} returned empty parts, skipping.`);
+              lastError = `Multimodal model ${mmModel} returned empty parts`;
               continue;
             }
 
@@ -338,7 +343,8 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
               (p: { inlineData?: { data?: string; mimeType?: string } }) => p.inlineData?.data
             );
             if (!imagePart) {
-              console.warn(`Multimodal model ${mmModel} returned no image part, skipping.`);
+              console.warn(`[gemini] Multimodal model ${mmModel} returned no image part, skipping.`);
+              lastError = `Multimodal model ${mmModel} returned no image part`;
               continue;
             }
 
@@ -354,7 +360,7 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
               angle: `Commercial Angle ${i + 1}`,
             });
 
-            outputs.push({
+            return {
               id: `gemini-gen-${Date.now()}-${i + 1}`,
               imageUrl,
               prompt: promptData.generationPrompt,
@@ -364,93 +370,119 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
               status: validation.status === "pass" ? "passed" : "rejected",
               createdAt: new Date().toISOString(),
               aspectRatio: input.direction.aspectRatio,
-            });
-            generatedRealImage = true;
+            };
           } catch (mmErr) {
-            console.warn(`Multimodal model ${mmModel} exception:`, mmErr);
+            const sanitized = sanitizeErrorMessage(mmErr, [this.apiKey]).slice(0, 300);
+            console.warn(`[gemini] Multimodal model ${mmModel} exception: ${sanitized}`);
+            lastError = sanitized;
           }
         }
       }
 
-      // 2. Try Imagen / Gemini Image API if not yet generated
-      if (!generatedRealImage) {
-        try {
-          const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${this.imageModel}:predict?key=${this.apiKey}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              signal: AbortSignal.timeout(90_000),
-              body: JSON.stringify({
-                instances: [{ prompt: promptData.generationPrompt }],
-                parameters: {
-                  sampleCount: 1,
-                  aspectRatio: input.direction.aspectRatio === "1:1" ? "1:1" : input.direction.aspectRatio === "9:16" ? "9:16" : "3:4",
-                  negativePrompt: promptData.negativePrompt,
-                },
-              }),
-            }
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            const base64Image = data.predictions?.[0]?.bytesBase64Encoded;
-            if (base64Image) {
-              const imageUrl = `data:image/jpeg;base64,${base64Image}`;
-              const validation = await this.validateProductConsistency({
-                sourceImages: input.sourceImages,
-                generatedImageUrl: imageUrl,
-                blueprint: input.blueprint,
-                locks: input.locks,
-                angle: `Commercial Angle ${i + 1}`,
-              });
-
-              outputs.push({
-                id: `real-gen-${Date.now()}-${i + 1}`,
-                imageUrl,
-                prompt: promptData.generationPrompt,
-                angle: `Commercial Angle ${i + 1}`,
-                consistencyScore: validation.score,
-                validation,
-                status: validation.status === "pass" ? "passed" : "rejected",
-                createdAt: new Date().toISOString(),
-                aspectRatio: input.direction.aspectRatio,
-              });
-              generatedRealImage = true;
-            }
+      // 2. Try Imagen / Gemini Image API if multimodal was not successful
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${this.imageModel}:predict?key=${this.apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: signal ?? AbortSignal.timeout(90_000),
+            body: JSON.stringify({
+              instances: [{ prompt: promptData.generationPrompt }],
+              parameters: {
+                sampleCount: 1,
+                aspectRatio: input.direction.aspectRatio === "1:1" ? "1:1" : input.direction.aspectRatio === "9:16" ? "9:16" : "3:4",
+                negativePrompt: promptData.negativePrompt,
+              },
+            }),
           }
-        } catch (genErr) {
-          console.warn("Imagen generation call notice:", genErr);
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const base64Image = data.predictions?.[0]?.bytesBase64Encoded;
+          if (base64Image) {
+            const imageUrl = `data:image/jpeg;base64,${base64Image}`;
+            const validation = await this.validateProductConsistency({
+              sourceImages: input.sourceImages,
+              generatedImageUrl: imageUrl,
+              blueprint: input.blueprint,
+              locks: input.locks,
+              angle: `Commercial Angle ${i + 1}`,
+            });
+
+            return {
+              id: `real-gen-${Date.now()}-${i + 1}`,
+              imageUrl,
+              prompt: promptData.generationPrompt,
+              angle: `Commercial Angle ${i + 1}`,
+              consistencyScore: validation.score,
+              validation,
+              status: validation.status === "pass" ? "passed" : "rejected",
+              createdAt: new Date().toISOString(),
+              aspectRatio: input.direction.aspectRatio,
+            };
+          }
+        } else {
+          const errText = await response.text().catch(() => "");
+          const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
+          console.warn(`[gemini] Imagen HTTP ${response.status}: ${sanitized}`);
+          lastError = sanitized;
+          lastStatus = response.status;
         }
+      } catch (genErr) {
+        const sanitized = sanitizeErrorMessage(genErr, [this.apiKey]).slice(0, 300);
+        console.warn(`[gemini] Imagen exception: ${sanitized}`);
+        lastError = sanitized;
       }
 
-      // If Imagen returned 404 or was not permitted, gracefully use high-fidelity studio asset with blueprint mapped
-      if (!generatedRealImage) {
-        const fallbackBatch = await this.demoFallback.generateProductImages({
-          ...input,
-          count: 1,
-        });
-        if (fallbackBatch[0]) {
-          const item = fallbackBatch[0];
-          outputs.push({
-            ...item,
-            id: `gemini-studio-${Date.now()}-${i + 1}`,
-            prompt: promptData.generationPrompt,
-            angle: item.angle || `Commercial Angle ${i + 1}`,
-            validation: {
-              ...item.validation,
-              notes: [
-                "Gemini 2.0 Flash Vision: Analisis geometri & fisik produk terverifikasi.",
-                "Studio Photography Engine: Foto produk asli Anda di-frame sesuai preset studio komersial.",
-                "Tips: Untuk generate gambar visual AI baru secara instan via prompt, Anda dapat menghubungkan OpenAI (DALL-E 3) atau Stability AI di Pengaturan API.",
-              ],
-            },
-          });
-        }
-      }
+      // No demo fallback — fail explicitly with AiPipelineError
+      throw new AiPipelineError(
+        `Gemini/Imagen generation failed: ${lastError || "No image data returned"}`,
+        "provider",
+        { provider: "gemini", status: lastStatus }
+      );
+    };
+
+    const promises: (() => Promise<GeneratedOutput>)[] = [];
+    for (let i = 0; i < count; i++) {
+      const idx = i;
+      promises.push(() => generateSingleImage(idx));
     }
 
-    return outputs;
+    // Concurrency-limited Promise.allSettled (max 3 in-flight at a time)
+    const CONCURRENCY = 3;
+    const settled: PromiseSettledResult<GeneratedOutput>[] = [];
+    for (let i = 0; i < promises.length; i += CONCURRENCY) {
+      const batch = promises.slice(i, i + CONCURRENCY).map((fn) => fn());
+      const batchResults = await Promise.allSettled(batch);
+      settled.push(...batchResults);
+    }
+
+    const successfulOutputs: GeneratedOutput[] = [];
+    settled.forEach((r, idx) => {
+      if (r.status === "fulfilled") {
+        successfulOutputs.push(r.value);
+      } else {
+        const sanitized = sanitizeErrorMessage(r.reason, [this.apiKey]).slice(0, 300);
+        console.error(
+          `[gemini] Generation failed for index ${idx}: stage=${r.reason instanceof AiPipelineError ? r.reason.stage : "unknown"} msg=${sanitized}`
+        );
+      }
+    });
+
+    if (successfulOutputs.length === 0) {
+      const firstRejected = settled.find((r) => r.status === "rejected") as PromiseRejectedResult;
+      const reason = firstRejected?.reason;
+      if (reason instanceof AiPipelineError) throw reason;
+      throw new AiPipelineError(
+        sanitizeErrorMessage(reason, [this.apiKey]).slice(0, 300) || "Failed to generate images with Gemini/Imagen.",
+        "provider",
+        { provider: "gemini" }
+      );
+    }
+
+    return successfulOutputs;
   }
 
   async validateProductConsistency(

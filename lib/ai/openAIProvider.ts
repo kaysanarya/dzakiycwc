@@ -17,6 +17,7 @@ import { buildStructuredPrompt } from "@/lib/prompts/buildPrompt";
 import { DemoAIProvider } from "./demoProvider";
 import { parseAIJsonResponse } from "./safeJson";
 import { sanitizeErrorMessage } from "@/lib/auth/serverAuth";
+import { AiPipelineError } from "./AiPipelineError";
 
 export class OpenAIProvider implements AIProvider {
   name = "OpenAI (DALL-E 3)";
@@ -115,6 +116,7 @@ export class OpenAIProvider implements AIProvider {
 
   async generateProductImages(input: GenerateImagesInput): Promise<GeneratedOutput[]> {
     const { blueprint, locks, direction, preservation, referenceAnalysis, count } = input;
+    const signal = (input as { signal?: AbortSignal }).signal;
 
     const isExplicitAngle = direction.cameraAngle && direction.cameraAngle !== "copy_reference";
     const angleVariations = [
@@ -153,7 +155,7 @@ export class OpenAIProvider implements AIProvider {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",
         },
-        signal: AbortSignal.timeout(90_000),
+        signal: signal ?? AbortSignal.timeout(90_000),
         body: JSON.stringify({
           model: "dall-e-3",
           prompt: generationPrompt.slice(0, 3900), // DALL-E 3 prompt max 4000 chars
@@ -167,14 +169,23 @@ export class OpenAIProvider implements AIProvider {
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         const errMsg = errJson?.error?.message || `OpenAI DALL-E 3 error (HTTP ${res.status})`;
-        throw new Error(errMsg);
+        const sanitized = sanitizeErrorMessage(new Error(errMsg), [this.apiKey]).slice(0, 300);
+        throw new AiPipelineError(
+          `OpenAI DALL-E 3 failed: ${sanitized}`,
+          "provider",
+          { provider: "openai", status: res.status }
+        );
       }
 
       const data = await res.json();
       const imageUrl = data.data?.[0]?.url;
 
       if (!imageUrl) {
-        throw new Error("OpenAI DALL-E 3 did not return an image URL.");
+        throw new AiPipelineError(
+          "OpenAI DALL-E 3 did not return an image URL.",
+          "provider",
+          { provider: "openai" }
+        );
       }
 
       // Execute authentic visual validation comparing generated image with source blueprint (F-08)
@@ -200,40 +211,42 @@ export class OpenAIProvider implements AIProvider {
     };
 
     const targetCount = Math.min(Math.max(1, count), 8);
-    const successfulOutputs: GeneratedOutput[] = [];
-
+    const promises: (() => Promise<GeneratedOutput>)[] = [];
     for (let i = 0; i < targetCount; i++) {
-      try {
-        const output = await generateSingleImage(i);
-        successfulOutputs.push(output);
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        console.warn(`DALL-E 3 generation failed for index ${i}:`, errMsg);
-        // Graceful fallback to Studio Compositor using the user's uploaded product
-        const fallbackBatch = await this.demoFallback.generateProductImages({
-          ...input,
-          count: 1,
-        });
-        if (fallbackBatch[0]) {
-          const item = fallbackBatch[0];
-          successfulOutputs.push({
-            ...item,
-            id: `openai-studio-${Date.now()}-${i + 1}`,
-            angle: angleVariations[i % angleVariations.length],
-            validation: {
-              ...item.validation,
-              notes: [
-                `OpenAI Notice: ${errMsg}. Menggunakan Studio Compositor untuk produk Anda.`,
-                ...(item.validation?.notes || []),
-              ],
-            },
-          });
-        }
-      }
+      const idx = i;
+      promises.push(() => generateSingleImage(idx));
     }
 
+    // Concurrency-limited Promise.allSettled (max 3 in-flight at a time)
+    const CONCURRENCY = 3;
+    const settled: PromiseSettledResult<GeneratedOutput>[] = [];
+    for (let i = 0; i < promises.length; i += CONCURRENCY) {
+      const batch = promises.slice(i, i + CONCURRENCY).map((fn) => fn());
+      const batchResults = await Promise.allSettled(batch);
+      settled.push(...batchResults);
+    }
+
+    const successfulOutputs: GeneratedOutput[] = [];
+    settled.forEach((r, idx) => {
+      if (r.status === "fulfilled") {
+        successfulOutputs.push(r.value);
+      } else {
+        const sanitized = sanitizeErrorMessage(r.reason, [this.apiKey]).slice(0, 300);
+        console.error(
+          `[openai] Generation failed for index ${idx}: stage=${r.reason instanceof AiPipelineError ? r.reason.stage : "unknown"} msg=${sanitized}`
+        );
+      }
+    });
+
     if (successfulOutputs.length === 0) {
-      throw new Error("Gagal memproses gambar produk.");
+      const firstRejected = settled.find((r) => r.status === "rejected") as PromiseRejectedResult;
+      const reason = firstRejected?.reason;
+      if (reason instanceof AiPipelineError) throw reason;
+      throw new AiPipelineError(
+        sanitizeErrorMessage(reason, [this.apiKey]).slice(0, 300) || "Failed to generate images with OpenAI.",
+        "provider",
+        { provider: "openai" }
+      );
     }
 
     return successfulOutputs;

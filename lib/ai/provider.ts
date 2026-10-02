@@ -36,6 +36,7 @@ export interface GenerateImagesInput {
   sourceImages: UploadedImage[];
   referenceImages?: UploadedImage[];
   count: number;
+  signal?: AbortSignal;
 }
 
 export interface ValidateConsistencyInput {

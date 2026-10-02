@@ -125,6 +125,8 @@ export async function POST(req: NextRequest) {
       `Strict Mode: ${preservation?.strictProductMode ?? true}`
     );
 
+    const requestedCount = Math.min(Math.max(1, count), 8);
+
     // Step 3: Generate Images (provider handles concurrency internally, max 3 per batch)
     const rawOutputs: GeneratedOutput[] = await generateImages(
       {
@@ -135,7 +137,8 @@ export async function POST(req: NextRequest) {
         referenceAnalysis,
         sourceImages: isolatedSourceImages,
         referenceImages,
-        count: Math.min(Math.max(1, count), 8),
+        count: requestedCount,
+        signal: req.signal,
       },
       providerOptions
     );
@@ -149,14 +152,22 @@ export async function POST(req: NextRequest) {
     });
 
     const activeProvider = getAIProvider(providerOptions);
+    const failedCount = Math.max(0, requestedCount - validatedOutputs.length);
+    const isPartial = failedCount > 0 && validatedOutputs.length > 0;
 
-    return NextResponse.json({
-      success: true,
-      provider: activeProvider.name,
-      isDemo: activeProvider.isDemo,
-      referenceAnalysis,
-      outputs: validatedOutputs,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        provider: activeProvider.name,
+        isDemo: activeProvider.isDemo,
+        referenceAnalysis,
+        outputs: validatedOutputs,
+        failedCount,
+      },
+      {
+        status: isPartial ? 207 : 200,
+      }
+    );
 
   } catch (err: unknown) {
     // Do not log AbortError as a server error — client disconnected intentionally

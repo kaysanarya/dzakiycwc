@@ -42,8 +42,9 @@ export function pipelineErrorToStatus(err: AiPipelineError): number {
   if (err.stage === "mask") return 422;
   if (err.stage === "provider") {
     if (err.status === 402 || err.status === 429) return err.status;
-    if (err.status && err.status >= 500) return 502;
     if (err.status === 401 || err.status === 403) return err.status;
+    if (err.status === 400 || err.status === 422) return err.status;
+    return 502;
   }
   return 500;
 }

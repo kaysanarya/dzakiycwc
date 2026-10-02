@@ -271,11 +271,25 @@ async function extractBackgroundWithSharp(inputBuffer: Buffer): Promise<Buffer> 
 export async function prepareImageBuffer(
   transparentPngBuffer: Buffer
 ): Promise<{ imageBuffer: Buffer; width: number; height: number }> {
-  const pngBuf = await forcePngBuffer(transparentPngBuffer);
+  let pngBuf = await forcePngBuffer(transparentPngBuffer);
 
   if (pngBuf.byteLength > MAX_BUFFER_BYTES) {
-    const resized = await resizeToFit(pngBuf, MAX_LONGEST_SIDE);
-    return { imageBuffer: resized.buffer, width: resized.width, height: resized.height };
+    const meta = await sharp(pngBuf).metadata();
+    let currentMax = Math.max(meta.width ?? MAX_LONGEST_SIDE, meta.height ?? MAX_LONGEST_SIDE);
+    let targetSide = Math.min(MAX_LONGEST_SIDE, currentMax);
+
+    while (targetSide >= 256) {
+      const sizeRatio = Math.sqrt(MAX_BUFFER_BYTES / pngBuf.byteLength) * 0.95;
+      targetSide = Math.min(targetSide - 32, Math.round(targetSide * Math.min(0.9, sizeRatio)));
+      targetSide = Math.max(256, targetSide);
+
+      const resized = await resizeToFit(pngBuf, targetSide);
+      pngBuf = resized.buffer;
+
+      if (pngBuf.byteLength <= MAX_BUFFER_BYTES || targetSide <= 256) {
+        return { imageBuffer: pngBuf, width: resized.width, height: resized.height };
+      }
+    }
   }
 
   const { info } = await sharp(pngBuf).raw().toBuffer({ resolveWithObject: true });
