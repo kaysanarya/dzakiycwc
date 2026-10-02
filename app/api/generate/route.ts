@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
       sourceImages,
       referenceImages,
       count = 4,
-      userProvider,
     } = body as {
       blueprint: ProductBlueprint;
       locks: ProductLocks;
@@ -33,13 +32,10 @@ export async function POST(req: NextRequest) {
       sourceImages: UploadedImage[];
       referenceImages?: UploadedImage[];
       count?: number;
-      userProvider?: string;
     };
 
-    // 1. Validate Provider, Body size, and Header x-api-key
-    const validation = validateApiKeyAndProvider(req, {
-      provider: userProvider,
-    });
+    // Resolve provider & API key from server environment (no client key needed)
+    const validation = validateApiKeyAndProvider(req, {});
     if (!validation.allowed) {
       return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
@@ -71,7 +67,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Generate product images with active or configured visual provider (BYOK)
+    // Generate product images with server-resolved provider (no BYOK)
     const providerOptions = {
       provider: validation.provider,
       apiKey: validation.apiKey,
@@ -91,7 +87,7 @@ export async function POST(req: NextRequest) {
       providerOptions
     );
 
-    // Step 8: Visual Validation & Rejection handling
+    // Visual Validation & Rejection handling
     const validatedOutputs = rawOutputs.map((output) => {
       if (output.consistencyScore < 85) {
         return {
@@ -114,9 +110,15 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const safeError = sanitizeErrorMessage(err, [activeKey]);
     console.error("API /api/generate error:", safeError);
-    return NextResponse.json(
-      { error: "Generation failed. " + safeError },
-      { status: 500 }
-    );
+
+    const isRateLimit =
+      safeError.toLowerCase().includes("rate") ||
+      safeError.toLowerCase().includes("quota") ||
+      safeError.toLowerCase().includes("429");
+    const userMsg = isRateLimit
+      ? "Server sedang memproses antrean, silakan coba beberapa saat lagi."
+      : "Terjadi kesalahan saat menghasilkan gambar. Silakan coba lagi.";
+
+    return NextResponse.json({ error: userMsg }, { status: 500 });
   }
 }

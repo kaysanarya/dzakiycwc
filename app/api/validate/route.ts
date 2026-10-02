@@ -7,19 +7,16 @@ export async function POST(req: NextRequest) {
   let activeKey: string | undefined;
   try {
     const body = await req.json();
-    const { sourceImages, generatedImageUrl, blueprint, locks, angle, userProvider } = body as {
+    const { sourceImages, generatedImageUrl, blueprint, locks, angle } = body as {
       sourceImages: UploadedImage[];
       generatedImageUrl: string;
       blueprint: ProductBlueprint;
       locks: ProductLocks;
       angle?: string;
-      userProvider?: string;
     };
 
-    // 1. Validate Provider, Body size, and Header x-api-key
-    const validation = validateApiKeyAndProvider(req, {
-      provider: userProvider,
-    });
+    // Resolve provider & API key from server environment (no client key needed)
+    const validation = validateApiKeyAndProvider(req, {});
     if (!validation.allowed) {
       return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
@@ -53,11 +50,15 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const safeError = sanitizeErrorMessage(err, [activeKey]);
     console.error("API /api/validate error:", safeError);
-    return NextResponse.json(
-      {
-        error: "Validation failed. " + safeError,
-      },
-      { status: 500 }
-    );
+
+    const isRateLimit =
+      safeError.toLowerCase().includes("rate") ||
+      safeError.toLowerCase().includes("quota") ||
+      safeError.toLowerCase().includes("429");
+    const userMsg = isRateLimit
+      ? "Server sedang memproses antrean, silakan coba beberapa saat lagi."
+      : "Terjadi kesalahan saat validasi gambar. Silakan coba lagi.";
+
+    return NextResponse.json({ error: userMsg }, { status: 500 });
   }
 }

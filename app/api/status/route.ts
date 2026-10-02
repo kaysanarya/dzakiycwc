@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
-import { ALLOWED_PIPELINE_PROVIDERS, ALLOWED_CONCEPT_ART_PROVIDERS } from "@/lib/auth/serverAuth";
+import { resolveServerProvider, ALLOWED_PIPELINE_PROVIDERS, ALLOWED_CONCEPT_ART_PROVIDERS } from "@/lib/auth/serverAuth";
 
 export async function GET() {
+  const provider = resolveServerProvider();
+  const isDemo = provider === "demo";
+
   return NextResponse.json({
-    mode: "byok",
-    aiConnected: false,
-    providerName: "VELLUM Demo Engine",
-    isDemo: true,
+    mode: isDemo ? "demo" : "server",
+    aiConnected: !isDemo,
+    providerName: isDemo ? "VELLUM Studio Engine" : provider.toUpperCase(),
+    isDemo,
     supportedProviders: ALLOWED_PIPELINE_PROVIDERS,
     supportedConceptArtProviders: ALLOWED_CONCEPT_ART_PROVIDERS,
   });

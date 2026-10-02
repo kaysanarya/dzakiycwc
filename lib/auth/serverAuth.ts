@@ -21,6 +21,41 @@ export type AllowedConceptArtProvider = typeof ALLOWED_CONCEPT_ART_PROVIDERS[num
 // Maximum allowed payload body size (15MB)
 export const MAX_BODY_SIZE_BYTES = 15 * 1024 * 1024;
 
+/**
+ * Resolves the active AI API key from server-side environment variables.
+ * Priority: AI_API_KEY → GEMINI_API_KEY → OPENAI_API_KEY → undefined (falls back to demo mode)
+ */
+export function resolveServerApiKey(provider?: string): string | undefined {
+  if (provider === "openai") {
+    return (
+      process.env.OPENAI_API_KEY?.trim() ||
+      process.env.AI_API_KEY?.trim() ||
+      undefined
+    );
+  }
+  // Gemini / default — prefers AI_API_KEY, then GEMINI_API_KEY
+  return (
+    process.env.AI_API_KEY?.trim() ||
+    process.env.GEMINI_API_KEY?.trim() ||
+    undefined
+  );
+}
+
+/**
+ * Determines the active AI provider from environment variables.
+ * Returns "gemini" if a Gemini key is set, "openai" if only an OpenAI key is set,
+ * or "demo" when no key is configured.
+ */
+export function resolveServerProvider(): string {
+  const aiKey = process.env.AI_API_KEY?.trim();
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  const openaiKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (aiKey || geminiKey) return "gemini";
+  if (openaiKey) return "openai";
+  return "demo";
+}
+
 export interface ValidateApiResult {
   allowed: boolean;
   status?: number;
@@ -106,12 +141,11 @@ export async function readJsonBodyWithLimit<T = unknown>(
 }
 
 /**
- * BYOK (Bring Your Own Key) Server Validation:
- * 1. Checks payload size (Content-Length and optional measured body size).
- * 2. Validates provider against strict whitelist (Condition 5).
- * 3. Allows demo mode / free pollinations without any key (Condition 3).
- * 4. Extracts API key strictly from the `x-api-key` header (Rule 2).
- * 5. Rejects real AI provider requests without key with 400 "Isi API key kamu di pengaturan" (Rule 3).
+ * Server-Centralized Validation:
+ * 1. Checks payload size.
+ * 2. Resolves provider and API key from server-side environment variables ONLY.
+ * 3. The browser NEVER sends or is required to send an API key.
+ * 4. Falls back to demo mode gracefully when no env keys are configured.
  */
 export function validateApiKeyAndProvider(
   req: NextRequest,
@@ -146,62 +180,31 @@ export function validateApiKeyAndProvider(
     };
   }
 
-  // 2. Validate Provider against allowed whitelist
   if (options.isConceptArt) {
-    const prov = options.provider || "pollinations";
-    if (!ALLOWED_CONCEPT_ART_PROVIDERS.includes(prov as AllowedConceptArtProvider)) {
-      return {
-        allowed: false,
-        status: 400,
-        error: `Provider AI tidak valid: "${options.provider}". Provider yang diizinkan untuk concept art: ${ALLOWED_CONCEPT_ART_PROVIDERS.join(", ")}`,
-        provider: prov,
-        isDemo: false,
-      };
-    }
-
-    // Pollinations is free and requires no key
-    if (prov === "pollinations") {
+    // Concept art: always use Pollinations (free, no key needed) unless a server key is present
+    const serverProvider = resolveServerProvider();
+    if (serverProvider !== "demo" && (serverProvider === "gemini" || serverProvider === "openai")) {
+      const apiKey = resolveServerApiKey(serverProvider);
       return {
         allowed: true,
-        provider: prov,
-        isDemo: true,
-      };
-    }
-
-    // OpenAI or Gemini in concept art requires user's API key
-    const apiKey = req.headers.get("x-api-key")?.trim();
-    if (!apiKey || apiKey === "demo_key") {
-      return {
-        allowed: false,
-        status: 400,
-        error: "Isi API key kamu di pengaturan",
-        provider: prov,
+        apiKey,
+        provider: serverProvider,
         isDemo: false,
       };
     }
-
+    // Default concept art to pollinations (free)
     return {
       allowed: true,
-      apiKey,
-      provider: prov,
-      isDemo: false,
+      provider: "pollinations",
+      isDemo: true,
     };
   }
 
-  // Main pipeline (analyze, generate, validate)
-  const prov = options.provider || "demo";
-  if (!ALLOWED_PIPELINE_PROVIDERS.includes(prov as AllowedPipelineProvider)) {
-    return {
-      allowed: false,
-      status: 400,
-      error: `Provider AI tidak valid: "${options.provider}". Provider yang diizinkan: ${ALLOWED_PIPELINE_PROVIDERS.join(", ")}`,
-      provider: prov,
-      isDemo: false,
-    };
-  }
+  // Main pipeline: resolve provider & key from server environment
+  const resolvedProvider = resolveServerProvider();
+  const resolvedApiKey = resolveServerApiKey(resolvedProvider);
 
-  // Demo mode runs local SVG compositor without any key (Condition 3)
-  if (prov === "demo") {
+  if (resolvedProvider === "demo" || !resolvedApiKey) {
     return {
       allowed: true,
       provider: "demo",
@@ -209,28 +212,16 @@ export function validateApiKeyAndProvider(
     };
   }
 
-  // Real AI provider requires user's API key via x-api-key header (Rule 2 & 3)
-  const apiKey = req.headers.get("x-api-key")?.trim();
-  if (!apiKey || apiKey === "demo_key") {
-    return {
-      allowed: false,
-      status: 400,
-      error: "Isi API key kamu di pengaturan",
-      provider: prov,
-      isDemo: false,
-    };
-  }
-
   return {
     allowed: true,
-    apiKey,
-    provider: prov,
+    apiKey: resolvedApiKey,
+    provider: resolvedProvider,
     isDemo: false,
   };
 }
 
 /**
- * Sanitizes errors and log strings so API keys are never leaked to logs or error messages (Rule 6).
+ * Sanitizes errors and log strings so API keys are never leaked to logs or error messages.
  */
 export function sanitizeErrorMessage(
   err: unknown,
@@ -246,11 +237,11 @@ export function sanitizeErrorMessage(
     .replace(/Bearer\s+[a-zA-Z0-9._-]+/gi, "Bearer [REDACTED_TOKEN]")
     .replace(/([?&]key=)[^&]+/gi, "$1[REDACTED]");
 
-  // Redact any explicitly provided user keys
+  // Redact any explicitly provided keys
   if (extraKeysToMask) {
     for (const key of extraKeysToMask) {
       if (key && key.trim().length > 5) {
-        message = message.split(key.trim()).join("[REDACTED_USER_KEY]");
+        message = message.split(key.trim()).join("[REDACTED_SERVER_KEY]");
       }
     }
   }

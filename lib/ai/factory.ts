@@ -11,44 +11,41 @@ export interface ProviderOptions {
 }
 
 /**
- * Factory for creating AI Providers (BYOK Pattern).
- * Rule 1: The server NEVER uses API keys from process.env for AI routes.
- * All fallback to process.env has been strictly removed.
+ * Factory for creating AI Providers.
+ * API keys are always sourced from server-side environment variables via serverAuth.
+ * The factory accepts the resolved provider + key from the route handler.
  */
 export function getAIProvider(options?: ProviderOptions): AIProvider {
   const chosenProvider = options?.provider || "demo";
-  const userApiKey = options?.apiKey?.trim();
+  const apiKey = options?.apiKey?.trim();
 
   // 1. Demo Mode (Runs local SVG compositor, no key required)
-  if (chosenProvider === "demo") {
+  if (chosenProvider === "demo" || !apiKey) {
     return new DemoAIProvider();
   }
 
-  // 2. Real AI Providers MUST have user's API key
-  if (!userApiKey || userApiKey === "demo_key") {
-    throw new Error("Isi API key kamu di pengaturan");
-  }
-
   if (chosenProvider === "openai") {
-    return new OpenAIProvider(userApiKey);
+    return new OpenAIProvider(apiKey);
   }
 
   if (chosenProvider === "stability") {
-    return new StabilityAIProvider(userApiKey);
+    return new StabilityAIProvider(apiKey);
   }
 
   if (chosenProvider === "replicate") {
-    return new ReplicateAIProvider(userApiKey);
+    return new ReplicateAIProvider(apiKey);
   }
 
   if (chosenProvider === "gemini") {
     return new GeminiAIProvider({
-      apiKey: userApiKey,
+      apiKey,
       visionModel: process.env.AI_VISION_MODEL || "gemini-2.0-flash",
       imageModel: process.env.AI_IMAGE_MODEL || "imagen-3.0-generate-002",
       validationModel: process.env.AI_VALIDATION_MODEL || "gemini-2.0-flash",
     });
   }
 
-  throw new Error(`Unsupported AI provider: "${chosenProvider}". Please select openai, stability, replicate, or gemini.`);
+  // Unknown provider: fall back to demo gracefully
+  console.warn(`[factory] Unknown provider "${chosenProvider}", falling back to demo.`);
+  return new DemoAIProvider();
 }

@@ -15,7 +15,6 @@ import { BlueprintModal } from "@/components/blueprint/BlueprintModal";
 import { ResultGallery } from "@/components/result-gallery/ResultGallery";
 import { HistoryDrawer } from "@/components/history/HistoryDrawer";
 import { ConceptArtGenerator } from "@/components/concept-art/ConceptArtGenerator";
-import { ApiSettingsModal, ApiCredentials } from "@/components/api-settings/ApiSettingsModal";
 
 import {
   UploadedImage,
@@ -76,22 +75,6 @@ const DEFAULT_LOCKS: ProductLocksType = {
 export default function Home() {
   const { t } = useLanguage();
 
-  // Mode state from backend status
-  const [isDemo, setIsDemo] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    try {
-      const storedCreds =
-        sessionStorage.getItem("vellum_api_credentials") ||
-        localStorage.getItem("vellum_api_credentials");
-      if (storedCreds) {
-        const parsed: ApiCredentials = JSON.parse(storedCreds);
-        if (parsed.apiKey) return false;
-      }
-    } catch { /* ignore */ }
-    return true;
-  });
-  const [, setProviderName] = useState("VELLUM Studio Engine");
-
   // Visual Assets
   const [sourceImages, setSourceImages] = useState<UploadedImage[]>([]);
   const [referenceImages, setReferenceImages] = useState<UploadedImage[]>([]);
@@ -127,7 +110,7 @@ export default function Home() {
     ignoreProductDesignFromReference: true,
   });
 
-  // Blueprint Caching key (Requirement 13)
+  // Blueprint Caching key (F-14)
   const [cachedSourceKey, setCachedSourceKey] = useState<string | null>(null);
 
   // Generation Batch Count
@@ -145,20 +128,6 @@ export default function Home() {
   const [isBlueprintModalOpen, setIsBlueprintModalOpen] = useState(false);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [isConceptArtOpen, setIsConceptArtOpen] = useState(false);
-  const [isApiSettingsOpen, setIsApiSettingsOpen] = useState(false);
-  const [apiCredentials, setApiCredentials] = useState<ApiCredentials | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const storedCreds =
-        sessionStorage.getItem("vellum_api_credentials") ||
-        localStorage.getItem("vellum_api_credentials");
-      if (storedCreds) {
-        const parsed: ApiCredentials = JSON.parse(storedCreds);
-        if (parsed.apiKey) return parsed;
-      }
-    } catch { /* ignore */ }
-    return null;
-  });
   const [historyItems, setHistoryItems] = useState<GenerationHistoryItem[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -180,54 +149,6 @@ export default function Home() {
       pipelineAbortRef.current?.abort();
     };
   }, []);
-
-  // Check system status on mount
-  useEffect(() => {
-    // 1. Fetch backend status
-    fetch("/api/status")
-      .then((res) => res.json())
-      .then((data) => {
-        // If client doesn't have custom key, use backend status
-        const hasKey =
-          Boolean(sessionStorage.getItem("vellum_api_credentials")) ||
-          Boolean(localStorage.getItem("vellum_api_credentials"));
-        if (!hasKey) {
-          setIsDemo(Boolean(data.isDemo));
-          if (data.providerName) setProviderName(data.providerName);
-        }
-      })
-      .catch((err) => console.warn("Could not check /api/status:", err));
-  }, []);
-
-  const handleSaveCredentials = (creds: ApiCredentials | null, rememberOnDevice?: boolean) => {
-    setApiCredentials(creds);
-    if (creds && creds.apiKey) {
-      try {
-        sessionStorage.setItem("vellum_api_credentials", JSON.stringify(creds));
-        if (rememberOnDevice) {
-          localStorage.setItem("vellum_api_credentials", JSON.stringify(creds));
-          localStorage.setItem("vellum_remember_credentials", "true");
-        } else {
-          localStorage.removeItem("vellum_api_credentials");
-          localStorage.removeItem("vellum_remember_credentials");
-        }
-      } catch {
-        // ignore
-      }
-      setIsDemo(false);
-      setProviderName(creds.provider.toUpperCase());
-    } else {
-      try {
-        sessionStorage.removeItem("vellum_api_credentials");
-        localStorage.removeItem("vellum_api_credentials");
-        localStorage.removeItem("vellum_remember_credentials");
-      } catch {
-        // ignore
-      }
-      setIsDemo(true);
-      setProviderName("VELLUM Demo Engine");
-    }
-  };
 
   // Sanitize history item to prevent localStorage QuotaExceededError (F-13)
   const sanitizeHistoryItemForStorage = (item: GenerationHistoryItem): GenerationHistoryItem => {
@@ -384,21 +305,15 @@ export default function Home() {
         // STEP 1: Analyze Raw Product
         updateStepStatus(1, "running", `Inspecting ${sourceImages.length} raw angles`);
         setCurrentLogMessage(`STEP 1: Multimodal inspection running on ${sourceImages.length} product images...`);
-        
-        const authHeaders: Record<string, string> = {
-          "Content-Type": "application/json",
-          ...(apiCredentials?.apiKey ? { "x-api-key": apiCredentials.apiKey } : {}),
-        };
 
         const analyzeRes = await fetch("/api/analyze", {
           method: "POST",
-          headers: authHeaders,
+          headers: { "Content-Type": "application/json" },
           signal,
           body: JSON.stringify({
             images: sourceImages,
             categoryHint: category,
             userNotes: footwearNotes,
-            userProvider: apiCredentials?.provider || "demo",
           }),
         });
 
@@ -419,14 +334,13 @@ export default function Home() {
         try {
           const bpRes = await fetch("/api/blueprint", {
             method: "POST",
-            headers: authHeaders,
+            headers: { "Content-Type": "application/json" },
             signal,
             body: JSON.stringify({
               images: sourceImages,
               category,
               existingBlueprint: currentBlueprint,
               userNotes: footwearNotes,
-              userProvider: apiCredentials?.provider || "demo",
             }),
           });
 
@@ -465,14 +379,9 @@ export default function Home() {
       updateStepStatus(5, "running", `Directing batch of ${generationCount} studio angles`);
       setCurrentLogMessage(`STEP 5: Generating ${generationCount} studio photography angles...`);
 
-      const authHeaders: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...(apiCredentials?.apiKey ? { "x-api-key": apiCredentials.apiKey } : {}),
-      };
-
       const genRes = await fetch("/api/generate", {
         method: "POST",
-        headers: authHeaders,
+        headers: { "Content-Type": "application/json" },
         signal,
         body: JSON.stringify({
           blueprint: currentBlueprint,
@@ -482,7 +391,6 @@ export default function Home() {
           sourceImages,
           referenceImages,
           count: generationCount,
-          userProvider: apiCredentials?.provider || "demo",
         }),
       });
 
@@ -506,7 +414,7 @@ export default function Home() {
           try {
             const valRes = await fetch("/api/validate", {
               method: "POST",
-              headers: authHeaders,
+              headers: { "Content-Type": "application/json" },
               signal,
               body: JSON.stringify({
                 sourceImages,
@@ -514,7 +422,6 @@ export default function Home() {
                 blueprint: currentBlueprint,
                 locks,
                 angle: output.angle,
-                userProvider: apiCredentials?.provider || "demo",
               }),
             });
 
@@ -552,7 +459,7 @@ export default function Home() {
           try {
             const regenRes = await fetch("/api/generate", {
               method: "POST",
-              headers: authHeaders,
+              headers: { "Content-Type": "application/json" },
               signal,
               body: JSON.stringify({
                 blueprint: currentBlueprint,
@@ -565,7 +472,6 @@ export default function Home() {
                 sourceImages,
                 referenceImages,
                 count: 1,
-                userProvider: apiCredentials?.provider || "demo",
               }),
             });
 
@@ -587,7 +493,7 @@ export default function Home() {
                 try {
                   const valRes = await fetch("/api/validate", {
                     method: "POST",
-                    headers: authHeaders,
+                    headers: { "Content-Type": "application/json" },
                     signal,
                     body: JSON.stringify({
                       sourceImages,
@@ -595,7 +501,6 @@ export default function Home() {
                       blueprint: currentBlueprint,
                       locks,
                       angle: newOutput.angle,
-                      userProvider: apiCredentials?.provider || "demo",
                     }),
                   });
 
@@ -682,7 +587,7 @@ export default function Home() {
         preservation,
         outputs: finalOutputs,
         averageScore: avgScore,
-        isDemo,
+        isDemo: false,
       };
       saveToHistory(historyItem);
     } catch (err: unknown) {
@@ -712,14 +617,9 @@ export default function Home() {
     setCurrentLogMessage(`Regenerating angle ${outputId} with strict lock constraints...`);
 
     try {
-      const authHeaders: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...(apiCredentials?.apiKey ? { "x-api-key": apiCredentials.apiKey } : {}),
-      };
-
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: authHeaders,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           blueprint,
           locks,
@@ -728,7 +628,6 @@ export default function Home() {
           sourceImages,
           referenceImages,
           count: 1,
-          userProvider: apiCredentials?.provider || "demo",
         }),
       });
 
@@ -757,13 +656,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen text-white flex flex-col font-sans">
-      {/* Top App Header (Clean sticky full-width topbar) */}
+      {/* Top App Header */}
       <Header
-        isDemo={isDemo}
-        activeProviderName={apiCredentials ? apiCredentials.provider.toUpperCase() : undefined}
         onLoadDemoProduct={handleLoadDemoProduct}
         onOpenHistory={() => setIsHistoryDrawerOpen(true)}
-        onOpenApiSettings={() => setIsApiSettingsOpen(true)}
         historyCount={historyItems.length}
       />
 
@@ -1011,14 +907,6 @@ export default function Home() {
       <ConceptArtGenerator
         isOpen={isConceptArtOpen}
         onClose={() => setIsConceptArtOpen(false)}
-      />
-
-      {/* AI Provider & API Key Configuration Modal (Requirement 2) */}
-      <ApiSettingsModal
-        isOpen={isApiSettingsOpen}
-        onClose={() => setIsApiSettingsOpen(false)}
-        onSaveCredentials={handleSaveCredentials}
-        currentCredentials={apiCredentials}
       />
     </div>
   );
