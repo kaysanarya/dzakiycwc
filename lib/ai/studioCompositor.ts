@@ -145,15 +145,18 @@ export async function generateProceduralPlate(options: ProceduralPlateOptions = 
  */
 async function generateMultiLayerShadows(
   scaledW: number,
-  scaledH: number
+  scaledH: number,
+  plateW: number,
+  plateH: number
 ): Promise<{
   contactShadow: { input: Buffer; topOffset: number };
   castShadow: { input: Buffer; leftOffset: number; topOffset: number };
   ambientPenumbra: { input: Buffer; topOffset: number };
 }> {
   // 1. Contact shadow: ultra-tight, dark grounding band (0–3px perceived height)
-  const contactW = Math.max(16, Math.round(scaledW * 0.92));
-  const contactH = Math.max(4, Math.round(scaledH * 0.04));
+  // Strictly bounded to plate dimensions
+  const contactW = Math.min(plateW, Math.max(16, Math.round(scaledW * 0.92)));
+  const contactH = Math.min(plateH, Math.max(4, Math.round(scaledH * 0.04)));
 
   const contactSvg = `
     <svg width="${contactW}" height="${contactH}" xmlns="http://www.w3.org/2000/svg">
@@ -162,7 +165,7 @@ async function generateMultiLayerShadows(
           <stop offset="0%" stop-color="#050608" stop-opacity="0.94" />
           <stop offset="60%" stop-color="#0d0f15" stop-opacity="0.75" />
           <stop offset="85%" stop-color="#141720" stop-opacity="0.25" />
-          <stop offset="100%" stop-color="#141720" stop-opacity="0" />
+          <stop offset="100%" stop-color="#141720" stop-opacity="0.0" />
         </radialGradient>
       </defs>
       <ellipse cx="${contactW / 2}" cy="${contactH / 2}" rx="${contactW * 0.49}" ry="${contactH * 0.45}" fill="url(#contactG)" />
@@ -174,8 +177,9 @@ async function generateMultiLayerShadows(
     .toBuffer();
 
   // 2. Directional cast shadow: diffused graduated shadow extending softly to the right/front
-  const castW = Math.max(24, Math.round(scaledW * 1.15));
-  const castH = Math.max(12, Math.round(scaledH * 0.16));
+  // Strictly bounded to plate dimensions
+  const castW = Math.min(plateW, Math.max(24, Math.round(scaledW * 1.15)));
+  const castH = Math.min(plateH, Math.max(12, Math.round(scaledH * 0.16)));
 
   const castSvg = `
     <svg width="${castW}" height="${castH}" xmlns="http://www.w3.org/2000/svg">
@@ -184,7 +188,7 @@ async function generateMultiLayerShadows(
           <stop offset="0%" stop-color="#0c0e14" stop-opacity="0.55" />
           <stop offset="45%" stop-color="#181a24" stop-opacity="0.28" />
           <stop offset="80%" stop-color="#242734" stop-opacity="0.08" />
-          <stop offset="100%" stop-color="#242734" stop-opacity="0" />
+          <stop offset="100%" stop-color="#242734" stop-opacity="0.0" />
         </radialGradient>
       </defs>
       <ellipse cx="${castW * 0.52}" cy="${castH * 0.48}" rx="${castW * 0.46}" ry="${castH * 0.44}" fill="url(#castG)" />
@@ -196,8 +200,9 @@ async function generateMultiLayerShadows(
     .toBuffer();
 
   // 3. Ambient penumbra: broad soft diffuse light falloff on the studio floor
-  const penumbraW = Math.max(32, Math.round(scaledW * 1.35));
-  const penumbraH = Math.max(16, Math.round(scaledH * 0.28));
+  // Strictly bounded to plate dimensions (never exceeds plate width/height)
+  const penumbraW = Math.min(plateW, Math.max(32, Math.round(scaledW * 1.25)));
+  const penumbraH = Math.min(plateH, Math.max(16, Math.round(scaledH * 0.25)));
 
   const penumbraSvg = `
     <svg width="${penumbraW}" height="${penumbraH}" xmlns="http://www.w3.org/2000/svg">
@@ -206,7 +211,7 @@ async function generateMultiLayerShadows(
           <stop offset="0%" stop-color="#141720" stop-opacity="0.25" />
           <stop offset="50%" stop-color="#1a1d28" stop-opacity="0.12" />
           <stop offset="85%" stop-color="#242734" stop-opacity="0.03" />
-          <stop offset="100%" stop-color="#242734" stop-opacity="0" />
+          <stop offset="100%" stop-color="#242734" stop-opacity="0.0" />
         </radialGradient>
       </defs>
       <ellipse cx="${penumbraW / 2}" cy="${penumbraH / 2}" rx="${penumbraW * 0.48}" ry="${penumbraH * 0.47}" fill="url(#penumbraG)" />
@@ -273,7 +278,8 @@ async function applyAmbientColorBounce(
  * Rules:
  * 1. Raw product pixels are preserved without alteration (only proportional lanczos3 resize + ambient bounce).
  * 2. Multi-layer contact, directional cast, and ambient shadows are positioned beneath the product.
- * 3. Product scale is strictly 55–70% of frame height (fixed anchor on lower third ground plane).
+ * 3. Product scale is strictly fit inside 75–80% of plate canvas (fixed anchor on lower third ground plane).
+ * 4. Product and all composite layers NEVER exceed the plate width or height.
  */
 export async function compositeProductOnPlate(options: CompositeProductOptions): Promise<Buffer> {
   const { plateBuffer, productCutoutBuffer } = options;
@@ -283,40 +289,49 @@ export async function compositeProductOnPlate(options: CompositeProductOptions):
   const plateW = plateMeta.width || 1024;
   const plateH = plateMeta.height || 1024;
 
-  // 2. Trim transparent padding from product cutout to find exact physical bounds
-  // Trim with threshold 5 to ensure clean alpha edge
-  const trimmed = await sharp(productCutoutBuffer)
-    .trim({ threshold: 5 })
-    .ensureAlpha()
-    .toBuffer({ resolveWithObject: true });
+  // 2. Pre-resize product cutout automatically using Sharp
+  // Skalakan gambar produk agar muat proporsional di dalam kanvas latar studio
+  // (gunakan fit: 'inside' dengan ukuran maksimal sekitar 75–80% dari dimensi plat latar).
+  const maxProductW = Math.max(64, Math.round(plateW * 0.78));
+  const maxProductH = Math.max(64, Math.round(plateH * 0.78));
 
-  const rawW = trimmed.info.width;
-  const rawH = trimmed.info.height;
+  // Safely trim transparent borders first (if present)
+  let preprocessedCutout = productCutoutBuffer;
+  try {
+    preprocessedCutout = await sharp(productCutoutBuffer)
+      .trim({ threshold: 5 })
+      .ensureAlpha()
+      .toBuffer();
+  } catch {
+    preprocessedCutout = await sharp(productCutoutBuffer).ensureAlpha().toBuffer();
+  }
 
-  // 3. Scale calculation: product height is 55–70% (target 62%) of plate height
-  const targetProductHeight = Math.round(plateH * 0.62);
-  const maxAllowedWidth = Math.round(plateW * 0.75);
-
-  const scaleFactor = Math.min(
-    targetProductHeight / rawH,
-    maxAllowedWidth / rawW
-  );
-
-  const scaledW = Math.max(64, Math.round(rawW * scaleFactor));
-  const scaledH = Math.max(64, Math.round(rawH * scaleFactor));
-
-  // Resize product proportionally (Piksel produk tidak diubah selain resize)
-  const productResized = await sharp(trimmed.data)
-    .resize(scaledW, scaledH, {
+  // Otomatis resize proporsional dengan fit: 'inside' sehingga tidak pernah melebihi plat
+  const resizedProductResult = await sharp(preprocessedCutout)
+    .resize(maxProductW, maxProductH, {
+      fit: "inside",
       kernel: "lanczos3",
-      fit: "fill",
+      withoutEnlargement: false,
     })
     .png()
-    .toBuffer();
+    .toBuffer({ resolveWithObject: true });
 
-  // 4. Fixed anchor positioning:
+  // Pastikan dimensi gambar produk yang akan ditempel tidak pernah melebihi lebar/tinggi gambar latar
+  const scaledW = Math.min(plateW, Math.max(16, resizedProductResult.info.width));
+  const scaledH = Math.min(plateH, Math.max(16, resizedProductResult.info.height));
+  let productResized = resizedProductResult.data;
+
+  // Extra guard: If by any chance dimensions exceed plate dimensions, strictly clamp
+  if (resizedProductResult.info.width > plateW || resizedProductResult.info.height > plateH) {
+    productResized = await sharp(productResized)
+      .resize(scaledW, scaledH, { fit: "inside" })
+      .png()
+      .toBuffer();
+  }
+
+  // 3. Fixed anchor positioning:
   // Center horizontally; bottom edge touches the ground baseline around 76% down the frame
-  const posX = Math.round((plateW - scaledW) / 2);
+  const posX = Math.max(0, Math.min(plateW - scaledW, Math.round((plateW - scaledW) / 2)));
   const baselineY = Math.round(plateH * 0.76);
   let posY = baselineY - scaledH;
 
@@ -325,46 +340,57 @@ export async function compositeProductOnPlate(options: CompositeProductOptions):
   if (posY < minTop) {
     posY = minTop;
   }
+  // Ensure product doesn't exceed bottom boundary
+  if (posY + scaledH > plateH) {
+    posY = Math.max(0, plateH - scaledH);
+  }
 
-  // 5. Apply subtle warm ambient color bounce to ground product into studio scene
+  // 4. Apply subtle warm ambient color bounce to ground product into studio scene
   const productIntegrated = await applyAmbientColorBounce(productResized, scaledW, scaledH);
 
-  // 6. Generate multi-layer shadows (Ambient Penumbra -> Cast Shadow -> Contact Shadow)
-  const shadows = await generateMultiLayerShadows(scaledW, scaledH);
+  // 5. Generate multi-layer shadows (Ambient Penumbra -> Cast Shadow -> Contact Shadow)
+  const shadows = await generateMultiLayerShadows(scaledW, scaledH, plateW, plateH);
   const shadowCenterBottomY = posY + scaledH;
 
   const penumbraMeta = await sharp(shadows.ambientPenumbra.input).metadata();
   const castMeta = await sharp(shadows.castShadow.input).metadata();
   const contactMeta = await sharp(shadows.contactShadow.input).metadata();
 
-  const penumbraLeft = Math.round(posX + (scaledW - (penumbraMeta.width || 0)) / 2);
-  const penumbraTop = Math.round(shadowCenterBottomY + shadows.ambientPenumbra.topOffset);
+  const penumbraW = penumbraMeta.width || 0;
+  const penumbraH = penumbraMeta.height || 0;
+  const castW = castMeta.width || 0;
+  const castH = castMeta.height || 0;
+  const contactW = contactMeta.width || 0;
+  const contactH = contactMeta.height || 0;
 
-  const castLeft = Math.round(posX + (scaledW - (castMeta.width || 0)) / 2 + shadows.castShadow.leftOffset);
-  const castTop = Math.round(shadowCenterBottomY + shadows.castShadow.topOffset);
+  const penumbraLeft = Math.max(0, Math.min(plateW - penumbraW, Math.round(posX + (scaledW - penumbraW) / 2)));
+  const penumbraTop = Math.max(0, Math.min(plateH - penumbraH, Math.round(shadowCenterBottomY + shadows.ambientPenumbra.topOffset)));
 
-  const contactLeft = Math.round(posX + (scaledW - (contactMeta.width || 0)) / 2);
-  const contactTop = Math.round(shadowCenterBottomY + shadows.contactShadow.topOffset);
+  const castLeft = Math.max(0, Math.min(plateW - castW, Math.round(posX + (scaledW - castW) / 2 + shadows.castShadow.leftOffset)));
+  const castTop = Math.max(0, Math.min(plateH - castH, Math.round(shadowCenterBottomY + shadows.castShadow.topOffset)));
 
-  // 7. Final Multi-layer Composite:
+  const contactLeft = Math.max(0, Math.min(plateW - contactW, Math.round(posX + (scaledW - contactW) / 2)));
+  const contactTop = Math.max(0, Math.min(plateH - contactH, Math.round(shadowCenterBottomY + shadows.contactShadow.topOffset)));
+
+  // 6. Final Multi-layer Composite:
   // Background Plate -> Ambient Penumbra -> Directional Cast Shadow -> Contact Occlusion -> Authentic Integrated Product
   const compositeLayers: OverlayOptions[] = [
     {
       input: shadows.ambientPenumbra.input,
-      left: Math.max(0, Math.min(plateW - (penumbraMeta.width || 0), penumbraLeft)),
-      top: Math.max(0, Math.min(plateH - (penumbraMeta.height || 0), penumbraTop)),
+      left: penumbraLeft,
+      top: penumbraTop,
       blend: "over",
     },
     {
       input: shadows.castShadow.input,
-      left: Math.max(0, Math.min(plateW - (castMeta.width || 0), castLeft)),
-      top: Math.max(0, Math.min(plateH - (castMeta.height || 0), castTop)),
+      left: castLeft,
+      top: castTop,
       blend: "over",
     },
     {
       input: shadows.contactShadow.input,
-      left: Math.max(0, Math.min(plateW - (contactMeta.width || 0), contactLeft)),
-      top: Math.max(0, Math.min(plateH - (contactMeta.height || 0), contactTop)),
+      left: contactLeft,
+      top: contactTop,
       blend: "over",
     },
     {
