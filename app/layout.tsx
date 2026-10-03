@@ -20,7 +20,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  themeColor: "#0c0d0e",
+  themeColor: "#09090b",
 };
 
 export const metadata: Metadata = {
@@ -39,7 +39,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id" className={`${spaceGrotesk.variable} ${plusJakartaSans.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-[#0c0d0e] text-[#f2efe9] font-sans antialiased overflow-x-hidden selection:bg-[#c88d48]/30 selection:text-white">
+      <body className="min-h-full flex flex-col bg-[#09090b] text-[#f4f4f5] font-sans antialiased overflow-x-hidden selection:bg-white/20 selection:text-white">
         <LanguageProvider>
           {children}
         </LanguageProvider>

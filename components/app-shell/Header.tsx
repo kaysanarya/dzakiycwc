@@ -33,7 +33,7 @@ export function Header({
       {/* Sisi Kiri (Branding) */}
       <div className="flex items-center gap-2 sm:gap-3 select-none shrink-0">
         <div className="flex items-center gap-2">
-          <VellumLogoMark className="w-4 h-4 text-studio-accent shrink-0" />
+          <VellumLogoMark className="w-4 h-4 text-zinc-100 shrink-0" />
           <span className="font-semibold tracking-wide text-studio-text text-sm font-heading">
             VELLUM
           </span>
@@ -66,7 +66,7 @@ export function Header({
           className="h-8 px-2 sm:px-3 rounded-lg text-xs font-medium text-studio-text border border-studio-border bg-studio-card hover:bg-studio-subcard transition-colors flex items-center gap-1.5 cursor-pointer"
           title={t.header.loadDemoProductTitle}
         >
-          <Sparkles className="w-3.5 h-3.5 text-studio-accent shrink-0" />
+          <Sparkles className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
           <span className="hidden sm:inline">{t.header.loadDemoProduct}</span>
           <span className="sm:hidden text-xs">Demo</span>
         </button>
@@ -78,14 +78,14 @@ export function Header({
           aria-label={`Buka/tutup riwayat foto, ${historyCount} tersimpan`}
           className={`h-8 px-2 sm:px-3 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1.5 cursor-pointer ${
             isHistoryOpen
-              ? "bg-studio-subcard border-studio-accent text-studio-text shadow-xs"
+              ? "bg-studio-subcard border-zinc-500 text-studio-text shadow-xs"
               : "bg-studio-card border-studio-border text-studio-muted hover:text-studio-text hover:bg-studio-subcard"
           }`}
         >
           <History className="w-3.5 h-3.5 text-studio-muted shrink-0" />
           <span className="hidden sm:inline">{t.header.history}</span>
           {historyCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded bg-studio-bg text-[10px] text-studio-accent font-mono border border-studio-border">
+            <span className="px-1.5 py-0.2 rounded bg-studio-bg text-[10px] text-zinc-200 font-mono border border-studio-border">
               {historyCount}
             </span>
           )}

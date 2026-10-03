@@ -130,7 +130,7 @@ export function StudioMobile({ session }: StudioMobileProps) {
                 onClick={handleLoadDemoProduct}
                 className="w-full min-h-[48px] px-4 rounded-xl border border-studio-border bg-studio-card text-studio-text hover:bg-studio-subcard transition-all flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer active:scale-98"
               >
-                <Sparkles className="w-4 h-4 text-studio-accent" />
+                <Sparkles className="w-4 h-4 text-zinc-100" />
                 <span>
                   {language === "id"
                     ? "Coba dengan foto produk demo sepatu"
@@ -148,7 +148,7 @@ export function StudioMobile({ session }: StudioMobileProps) {
             <div className="card-studio p-3.5 space-y-2">
               <div className="flex items-center justify-between pb-1">
                 <span className="text-xs font-semibold text-studio-text font-heading flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-studio-accent" />
+                  <Layers className="w-3.5 h-3.5 text-zinc-100" />
                   <span>{language === "id" ? "Foto Produk Asli" : "Original Product"}</span>
                 </span>
                 <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
@@ -216,7 +216,7 @@ export function StudioMobile({ session }: StudioMobileProps) {
                           onClick={() => setGenerationCount(count)}
                           className={`min-h-[44px] rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
                             generationCount === count
-                              ? "bg-studio-accent text-studio-bg border-studio-accent"
+                              ? "bg-white text-zinc-950 font-bold border-white"
                               : "bg-studio-subcard text-studio-muted border-studio-border"
                           }`}
                         >
@@ -239,7 +239,7 @@ export function StudioMobile({ session }: StudioMobileProps) {
                           onClick={() => setDirection({ ...direction, aspectRatio: r })}
                           className={`min-h-[44px] rounded-lg border text-xs font-semibold font-mono transition-colors cursor-pointer ${
                             direction.aspectRatio === r
-                              ? "bg-studio-subcard border-studio-accent text-studio-text ring-1 ring-studio-accent"
+                              ? "bg-studio-subcard border-zinc-200 text-white ring-1 ring-zinc-200 font-bold"
                               : "bg-studio-card text-studio-muted border-studio-border"
                           }`}
                         >

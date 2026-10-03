@@ -139,11 +139,11 @@ export function BeforeAfterSlider({
 
       {/* Divider Line & Touch-Friendly Handle (36x36px on mobile) */}
       <div
-        className="absolute inset-y-0 w-[2px] bg-studio-accent/90 pointer-events-none shadow-[0_0_8px_rgba(200,141,72,0.5)]"
+        className="absolute inset-y-0 w-[2px] bg-white pointer-events-none shadow-[0_0_8px_rgba(255,255,255,0.4)]"
         style={{ left: `${sliderPosition}%` }}
       >
-        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-studio-subcard border-2 border-studio-accent flex items-center justify-center text-studio-text shadow-xl shadow-black/80 hover:scale-105 active:scale-95 transition-transform pointer-events-none">
-          <Sliders className="w-3.5 h-3.5 text-studio-accent" />
+        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-zinc-900 border-2 border-white flex items-center justify-center text-zinc-100 shadow-xl shadow-black/80 hover:scale-105 active:scale-95 transition-transform pointer-events-none">
+          <Sliders className="w-3.5 h-3.5 text-zinc-200" />
         </div>
       </div>
     </div>

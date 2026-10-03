@@ -4,18 +4,18 @@
 
 @layer base {
   :root {
-    --bg-app: #0e0f10;
-    --surface-card: #151618;
-    --surface-subcard: #1c1d20;
-    --surface-elevated: #24262a;
-    --border-subtle: #26282b;
-    --border-default: #35383d;
-    --text-primary: #f2efe9;
-    --text-secondary: #a8a49c;
-    --text-muted: #757169;
-    --accent: #c88d48;
-    --accent-hover: #db9e56;
-    --accent-contrast: #0e0f10;
+    --bg-app: #09090b;
+    --surface-card: #121215;
+    --surface-subcard: #18181b;
+    --surface-elevated: #222226;
+    --border-subtle: #27272a;
+    --border-default: #3f3f46;
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: #f4f4f5;
+    --accent-hover: #ffffff;
+    --accent-contrast: #09090b;
   }
 
   body {
@@ -48,10 +48,10 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   STUDIO DESIGN SYSTEM — Calm, Warm Neutral & Commercial
+   STUDIO DESIGN SYSTEM — Calm, Monochrome & Commercial
    ═══════════════════════════════════════════════════════ */
 
-/* Surface cards: warm graphite/charcoal with thin crisp 1px borders */
+/* Surface cards: zinc graphite/charcoal with thin crisp 1px borders */
 .card-studio {
   background-color: var(--surface-card);
   border: 1px solid var(--border-subtle);
@@ -64,7 +64,7 @@
   border-radius: 8px;
 }
 
-/* Primary studio action button */
+/* Primary studio action button — Solid clean white Linear / Vercel style */
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -75,17 +75,18 @@
   letter-spacing: -0.01em;
   padding: 10px 18px;
   border-radius: 8px;
-  background-color: var(--accent);
-  color: #0e0f10;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #f4f4f5;
+  color: #09090b;
+  border: 1px solid #ffffff;
   transition: background-color 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.1s ease;
   cursor: pointer;
   user-select: none;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-hover);
+  background-color: #ffffff;
   color: #000000;
+  box-shadow: 0 1px 6px rgba(255, 255, 255, 0.15);
 }
 
 .btn-primary:active:not(:disabled) {

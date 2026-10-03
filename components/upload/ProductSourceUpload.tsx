@@ -152,11 +152,11 @@ export function ProductSourceUpload({
           }}
           className={`w-full min-h-[260px] border-2 border-dashed rounded-2xl p-4 sm:p-8 flex flex-col items-center justify-center cursor-pointer transition-colors select-none ${
             dragActive
-              ? "border-studio-accent bg-studio-subcard"
+              ? "border-zinc-300 bg-studio-subcard"
               : "border-studio-border hover:border-studio-default bg-studio-card hover:bg-studio-subcard"
           }`}
         >
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-studio-subcard border border-studio-border flex items-center justify-center text-studio-accent mb-3 sm:mb-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-studio-subcard border border-studio-border flex items-center justify-center text-zinc-100 mb-3 sm:mb-4">
             <Upload className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
 

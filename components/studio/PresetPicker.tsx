@@ -109,7 +109,7 @@ export function PresetPicker({
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-studio-accent font-medium text-xs">
+          <div className="flex items-center gap-1.5 text-zinc-300 font-medium text-xs">
             <span className="hidden xs:inline">
               {language === "id" ? "Ubah" : "Change"}
             </span>
@@ -170,7 +170,7 @@ export function PresetPicker({
                       }}
                       className={`w-full min-h-[54px] p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
                         isSelected
-                          ? "bg-studio-subcard border-studio-accent ring-1 ring-studio-accent"
+                          ? "bg-studio-subcard border-zinc-200 ring-1 ring-zinc-200"
                           : "bg-studio-card/80 hover:bg-studio-subcard border-studio-border text-studio-muted"
                       }`}
                     >
@@ -193,7 +193,7 @@ export function PresetPicker({
                       </div>
 
                       {isSelected && (
-                        <div className="w-6 h-6 rounded-full bg-studio-accent flex items-center justify-center text-studio-bg shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-zinc-950 shrink-0">
                           <Check className="w-3.5 h-3.5 stroke-[3]" />
                         </div>
                       )}
@@ -236,7 +236,7 @@ export function PresetPicker({
               }
               className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
                 isSelected
-                  ? "bg-studio-subcard border-studio-accent text-studio-text ring-1 ring-studio-accent/70 shadow-xs"
+                  ? "bg-studio-subcard border-zinc-300 text-white ring-1 ring-zinc-300/80 shadow-xs font-semibold"
                   : "bg-studio-card/60 hover:bg-studio-subcard border-studio-border text-studio-muted hover:text-studio-text"
               }`}
             >
@@ -245,7 +245,7 @@ export function PresetPicker({
                   className={`w-5 h-5 rounded border shadow-inner shrink-0 ${preset.previewClass}`}
                 />
                 {isSelected && (
-                  <Check className="w-3.5 h-3.5 text-studio-accent stroke-[2.5]" />
+                  <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
                 )}
               </div>
               <div>

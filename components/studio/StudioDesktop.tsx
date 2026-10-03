@@ -136,7 +136,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
                         onClick={() => setDirection({ ...direction, aspectRatio: r })}
                         className={`py-2 px-1 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                           isSelected
-                            ? "bg-studio-subcard border-studio-accent text-studio-text ring-1 ring-studio-accent/70 font-bold"
+                            ? "bg-studio-subcard border-zinc-200 text-white ring-1 ring-zinc-200/80 font-bold"
                             : "bg-studio-card/60 text-studio-muted hover:text-studio-text border-studio-border"
                         }`}
                       >
@@ -157,7 +157,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
                   onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
                   aria-expanded={isAdvancedOpen}
                   aria-label="Buka tutup pengaturan lanjutan"
-                  className="w-full flex items-center justify-between text-xs font-semibold text-studio-text hover:text-studio-accent transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between text-xs font-semibold text-studio-text hover:text-white transition-colors cursor-pointer"
                 >
                   <span className="flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5 text-studio-muted" />
@@ -199,7 +199,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
                             onClick={() => setGenerationCount(count)}
                             className={`py-1.5 px-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
                               generationCount === count
-                                ? "bg-studio-accent text-studio-bg font-bold border-studio-accent"
+                                ? "bg-white text-zinc-950 font-bold border-white"
                                 : "bg-studio-card text-studio-muted hover:text-studio-text border-studio-border"
                             }`}
                           >
@@ -335,7 +335,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
                 onClick={handleLoadDemoProduct}
                 className="btn-secondary h-9 px-4 text-xs gap-1.5 rounded-lg border-studio-border"
               >
-                <Sparkles className="w-3.5 h-3.5 text-studio-accent" />
+                <Sparkles className="w-3.5 h-3.5 text-zinc-100" />
                 <span>
                   {language === "id"
                     ? "Atau muat contoh produk demo sepatu"
@@ -396,7 +396,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
               <div className="card-studio overflow-hidden flex flex-col">
                 <div className="p-2.5 border-b border-studio-border flex items-center justify-between bg-studio-card/80">
                   <span className="text-xs font-semibold text-studio-text flex items-center gap-1.5 font-heading">
-                    <Layers className="w-3.5 h-3.5 text-studio-accent" />
+                    <Layers className="w-3.5 h-3.5 text-zinc-100" />
                     <span>{language === "id" ? "Potongan Produk (Mask)" : "Product Cutout (Mask)"}</span>
                   </span>
                   <span className="text-[10px] text-studio-muted bg-studio-subcard px-1.5 py-0.5 rounded border border-studio-border font-mono">
@@ -493,7 +493,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
                 <span className="text-xs font-semibold text-studio-text font-heading">
                   {language === "id" ? "Riwayat Hasil" : "History"}
                 </span>
-                <span className="text-[10px] font-mono text-studio-accent bg-studio-card px-1.5 py-0.5 rounded border border-studio-border">
+                <span className="text-[10px] font-mono text-zinc-200 bg-studio-card px-1.5 py-0.5 rounded border border-studio-border">
                   {historyItems.length}
                 </span>
               </div>
@@ -556,7 +556,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
                       <button
                         type="button"
                         onClick={() => handleLoadHistoryItem(item)}
-                        className="text-studio-accent hover:text-studio-text font-medium cursor-pointer"
+                        className="text-zinc-200 hover:text-white font-medium cursor-pointer"
                       >
                         {language === "id" ? "Lihat" : "View"}
                       </button>

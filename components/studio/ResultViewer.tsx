@@ -108,7 +108,7 @@ export function ResultViewer({
               onClick={() => setShowSlider(!showSlider)}
               className={`min-h-[36px] px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
                 showSlider
-                  ? "bg-studio-accent text-studio-bg border-studio-accent font-semibold"
+                  ? "bg-white text-zinc-950 border-white font-semibold"
                   : "bg-studio-card text-studio-muted border-studio-border"
               }`}
             >
@@ -194,7 +194,7 @@ export function ResultViewer({
                 <span
                   className={`rounded-full transition-all ${
                     selectedIndex === idx
-                      ? "w-6 h-2 bg-studio-accent"
+                      ? "w-6 h-2 bg-white"
                       : "w-2 h-2 bg-studio-border hover:bg-studio-muted"
                   }`}
                 />
@@ -215,7 +215,7 @@ export function ResultViewer({
             }
             className="min-h-[44px] px-3 rounded-xl border border-studio-border bg-studio-card text-studio-text hover:bg-studio-subcard flex items-center justify-center gap-2 text-xs font-semibold font-heading cursor-pointer active:scale-98"
           >
-            <Download className="w-4 h-4 text-studio-accent" />
+            <Download className="w-4 h-4 text-zinc-100" />
             <span>{language === "id" ? "Unduh PNG" : "Download PNG"}</span>
           </button>
 
@@ -234,7 +234,7 @@ export function ResultViewer({
             }
             className="min-h-[44px] px-3 rounded-xl border border-studio-border bg-studio-card text-studio-text hover:bg-studio-subcard flex items-center justify-center gap-2 text-xs font-semibold font-heading cursor-pointer active:scale-98"
           >
-            <Share2 className="w-4 h-4 text-studio-accent" />
+            <Share2 className="w-4 h-4 text-zinc-100" />
             <span>{language === "id" ? "Bagikan" : "Share"}</span>
           </button>
         </div>
@@ -296,7 +296,7 @@ export function ResultViewer({
                   e.stopPropagation();
                   onDownload(activeOutput.imageUrl, "foto-studio");
                 }}
-                className="min-h-[44px] px-4 rounded-xl bg-studio-accent text-studio-bg font-semibold text-xs flex items-center gap-2 cursor-pointer"
+                className="min-h-[44px] px-4 rounded-xl bg-white text-zinc-950 font-semibold text-xs flex items-center gap-2 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 <span>{language === "id" ? "Unduh" : "Download"}</span>
@@ -320,7 +320,7 @@ export function ResultViewer({
           <span className="text-studio-dim">•</span>
           <span className="text-studio-muted">Aspect {direction.aspectRatio}</span>
           <span className="text-studio-dim">•</span>
-          <span className="text-studio-accent font-medium">
+          <span className="text-zinc-100 font-medium">
             {activeOutput.angle || "Studio Shot"}
           </span>
         </div>
@@ -402,7 +402,7 @@ export function ResultViewer({
                     aria-label={`Pilih variasi ${idx + 1}`}
                     className={`relative w-[60px] h-[60px] rounded-lg overflow-hidden border p-0.5 bg-studio-bg transition-all shrink-0 cursor-pointer ${
                       isSelected
-                        ? "border-studio-accent ring-2 ring-studio-accent ring-offset-2 ring-offset-studio-bg shadow-md"
+                        ? "border-white ring-2 ring-white ring-offset-2 ring-offset-studio-bg shadow-md"
                         : "border-studio-border hover:border-studio-muted opacity-60 hover:opacity-100"
                     }`}
                   >
@@ -415,7 +415,7 @@ export function ResultViewer({
                     <span
                       className={`absolute bottom-1 right-1 text-[9px] font-mono px-1 rounded ${
                         isSelected
-                          ? "bg-studio-accent text-studio-bg font-bold"
+                          ? "bg-white text-zinc-950 font-bold"
                           : "bg-studio-card/90 text-studio-muted"
                       }`}
                     >

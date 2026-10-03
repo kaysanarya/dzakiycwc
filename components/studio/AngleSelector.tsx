@@ -96,7 +96,7 @@ export function AngleSelector({
           className="w-full min-h-[50px] p-3 rounded-xl border border-studio-border bg-studio-card flex items-center justify-between text-left active:bg-studio-subcard transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-studio-subcard border border-studio-border flex items-center justify-center text-studio-accent shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-studio-subcard border border-studio-border flex items-center justify-center text-zinc-200 shrink-0">
               <Camera className="w-4 h-4" />
             </div>
             <div>
@@ -108,7 +108,7 @@ export function AngleSelector({
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-studio-accent font-medium text-xs">
+          <div className="flex items-center gap-1.5 text-zinc-300 font-medium text-xs">
             <span className="hidden xs:inline">
               {language === "id" ? "Ubah" : "Change"}
             </span>
@@ -169,7 +169,7 @@ export function AngleSelector({
                       }}
                       className={`w-full min-h-[54px] p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
                         isSelected
-                          ? "bg-studio-subcard border-studio-accent ring-1 ring-studio-accent"
+                          ? "bg-studio-subcard border-zinc-200 ring-1 ring-zinc-200"
                           : "bg-studio-card/80 hover:bg-studio-subcard border-studio-border text-studio-muted"
                       }`}
                     >
@@ -187,7 +187,7 @@ export function AngleSelector({
                       </div>
 
                       {isSelected && (
-                        <div className="w-6 h-6 rounded-full bg-studio-accent flex items-center justify-center text-studio-bg shrink-0 ml-2">
+                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-zinc-950 shrink-0 ml-2">
                           <Check className="w-3.5 h-3.5 stroke-[3]" />
                         </div>
                       )}
@@ -230,7 +230,7 @@ export function AngleSelector({
               }
               className={`p-2 rounded-lg border text-xs font-medium text-center transition-all cursor-pointer truncate ${
                 isSelected
-                  ? "bg-studio-subcard text-studio-text border-studio-accent font-semibold ring-1 ring-studio-accent/70"
+                  ? "bg-studio-subcard text-white border-zinc-300 font-semibold ring-1 ring-zinc-300/80"
                   : "bg-studio-card/60 text-studio-muted hover:text-studio-text hover:bg-studio-subcard border-studio-border"
               }`}
             >

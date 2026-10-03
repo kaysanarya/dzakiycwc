@@ -43,7 +43,7 @@ export function BlueprintSheet({
           <div className="w-10 h-1 rounded-full bg-studio-border mb-3" />
           <div className="w-full flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FileCode className="w-4 h-4 text-studio-accent" />
+              <FileCode className="w-4 h-4 text-zinc-200" />
               <div>
                 <h3 className="text-sm font-semibold text-studio-text font-heading">
                   {language === "id" ? "Product Blueprint" : "Product Blueprint"}
