@@ -163,6 +163,7 @@ export interface AgentStep {
   startedAt?: string;
   completedAt?: string;
   details?: string;
+  error?: string;
 }
 
 export interface ValidationChecks {

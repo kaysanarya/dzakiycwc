@@ -8,6 +8,7 @@ import {
   FileCode2,
   Loader2,
   Cpu,
+  RotateCcw,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
@@ -17,6 +18,7 @@ interface AgentMonitorProps {
   hasStarted: boolean;
   blueprint: ProductBlueprint | null;
   onOpenBlueprint: () => void;
+  onRetry?: () => void;
   currentLogMessage?: string;
 }
 
@@ -26,9 +28,10 @@ export function AgentMonitor({
   hasStarted,
   blueprint,
   onOpenBlueprint,
+  onRetry,
   currentLogMessage,
 }: AgentMonitorProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <div className="liquid-glass-card p-5 sm:p-6 flex flex-col h-full">
@@ -36,7 +39,7 @@ export function AgentMonitor({
       <div className="flex items-start justify-between border-b border-white/[0.06] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
             <h2 className="text-base font-bold text-white tracking-tight uppercase">
               {t.agentMonitor.title}
             </h2>
@@ -91,7 +94,7 @@ export function AgentMonitor({
                       : isCompleted
                       ? "bg-white/[0.03] border-white/[0.06] backdrop-blur-md"
                       : isFailed
-                      ? "bg-red-500/15 border-red-400/30 backdrop-blur-md"
+                      ? "bg-red-500/15 border-red-400/40 shadow-[0_4px_16px_rgba(239,68,68,0.15)] backdrop-blur-md"
                       : "bg-[#03195b]/15 border-[#3781fc]/10 opacity-70 backdrop-blur-xs"
                   }`}
                 >
@@ -117,7 +120,7 @@ export function AgentMonitor({
 
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold uppercase tracking-wide text-white">
+                          <span className={`text-xs font-bold uppercase tracking-wide ${isFailed ? "text-red-300" : "text-white"}`}>
                             {t.agentMonitor.stepLabel} {idx + 1}: {step.title}
                           </span>
                         </div>
@@ -140,7 +143,7 @@ export function AgentMonitor({
                         </span>
                       )}
                       {isFailed && (
-                        <span className="px-2.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/25">
+                        <span className="px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/35">
                           {t.agentMonitor.failed}
                         </span>
                       )}
@@ -151,9 +154,28 @@ export function AgentMonitor({
                   </div>
 
                   {/* Step detail note if running/completed */}
-                  {step.details && (
+                  {step.details && !isFailed && (
                     <div className="mt-2 text-[10px] font-mono text-white/60 bg-white/[0.03] rounded-xl p-2 border border-white/[0.05]">
                       &gt; {step.details}
+                    </div>
+                  )}
+
+                  {/* Failed Step Error Message and Retry Action */}
+                  {isFailed && (
+                    <div className="mt-2.5 p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <p className="text-xs text-red-300 font-medium">
+                        {step.error || step.details || (language === "id" ? "Terjadi kesalahan pada langkah ini." : "An error occurred during this step.")}
+                      </p>
+                      {onRetry && (
+                        <button
+                          type="button"
+                          onClick={onRetry}
+                          className="shrink-0 px-3 py-1 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-white text-xs font-bold border border-red-400/40 transition-all cursor-pointer inline-flex items-center gap-1.5 self-start sm:self-center"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>{language === "id" ? "Coba lagi" : "Try again"}</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -170,7 +192,7 @@ export function AgentMonitor({
             <div className="flex items-center justify-between text-[10px] text-[#3781fc]/60 pb-1.5 border-b border-[#3781fc]/30 mb-2">
               <span className="tracking-wider">{t.agentMonitor.pipelineConsole}</span>
               <span className="text-emerald-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                 {t.agentMonitor.liveFeed}
               </span>
             </div>

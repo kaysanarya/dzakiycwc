@@ -37,14 +37,35 @@ import {
 import { Sparkles, Play, Camera, AlertTriangle, ArrowRight, KeyRound, X } from "lucide-react";
 import { ApiSettingsModal, type ApiCredentials } from "@/components/api-settings/ApiSettingsModal";
 
-const INITIAL_STEPS: AgentStep[] = [
-  { id: 1, key: "analyze_product", title: "Analyze Raw Product", description: "Multi-angle visual inspection of geometry and materials", status: "pending" },
-  { id: 2, key: "create_blueprint", title: "Create Product Blueprint", description: "Extract structured physical constraints & identity", status: "pending" },
-  { id: 3, key: "analyze_reference", title: "Analyze Reference", description: "Extract lighting, background & mood without geometry", status: "pending" },
-  { id: 4, key: "apply_locks", title: "Apply Product Locks", description: "Immobilize physical attributes against generative drift", status: "pending" },
-  { id: 5, key: "generate_images", title: "Generate Images", description: "Direct camera angles, shadows, and environment", status: "pending" },
-  { id: 6, key: "validate_consistency", title: "Validate Product Consistency", description: "AI visual audit against blueprint constraints", status: "pending" },
-  { id: 7, key: "finalize_images", title: "Finalize Images", description: "Package commercial catalog results & consistency scores", status: "pending" },
+const getInitialSteps = (language: "en" | "id"): AgentStep[] => [
+  {
+    id: 1,
+    key: "analyze",
+    title: language === "id" ? "Analisis foto" : "Analyze photo",
+    description: language === "id" ? "Mengenali bentuk dan detail fisik produk" : "Extract product features and category",
+    status: "pending",
+  },
+  {
+    id: 2,
+    key: "cutout",
+    title: language === "id" ? "Potong produk" : "Cut out product",
+    description: language === "id" ? "Memisahkan produk asli dari latar foto" : "Isolate product from original background",
+    status: "pending",
+  },
+  {
+    id: 3,
+    key: "background",
+    title: language === "id" ? "Buat latar" : "Generate background",
+    description: language === "id" ? "Membuat latar studio dan tata cahaya" : "Create studio background plate",
+    status: "pending",
+  },
+  {
+    id: 4,
+    key: "composite",
+    title: language === "id" ? "Tempel dan cek hasil" : "Composite & review",
+    description: language === "id" ? "Menempel produk asli, bayangan alami, dan verifikasi" : "Paste authentic product, shadows, and verify",
+    status: "pending",
+  },
 ];
 
 const DEFAULT_LOCKS: ProductLocksType = {
@@ -89,7 +110,7 @@ export default function Home() {
   // Pipeline Execution State
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
-  const [pipelineSteps, setPipelineSteps] = useState<AgentStep[]>(INITIAL_STEPS);
+  const [pipelineSteps, setPipelineSteps] = useState<AgentStep[]>(() => getInitialSteps("id"));
   const [currentLogMessage, setCurrentLogMessage] = useState<string>("");
   const [blueprint, setBlueprint] = useState<ProductBlueprint | null>(null);
   const [generatedOutputs, setGeneratedOutputs] = useState<GeneratedOutput[]>([]);
@@ -269,13 +290,13 @@ export default function Home() {
     setGeneratedOutputs(DEMO_OUTPUTS);
     setHasStarted(true);
     setPipelineSteps(
-      INITIAL_STEPS.map((s) => ({
+      getInitialSteps(language).map((s) => ({
         ...s,
         status: "completed",
-        resultMessage: "Demo data loaded successfully",
+        details: language === "id" ? "Data demo berhasil dimuat" : "Demo data loaded",
       }))
     );
-    setCurrentLogMessage("Loaded demo footwear project: Luxury Hourglass Mule");
+    setCurrentLogMessage(language === "id" ? "Produk demo berhasil dimuat." : "Demo footwear project loaded.");
   };
 
   // History load callback
@@ -297,22 +318,27 @@ export default function Home() {
   const updateStepStatus = (
     id: number,
     status: AgentStep["status"],
-    resultMessage?: string
+    details?: string,
+    error?: string
   ) => {
     setPipelineSteps((prev) =>
       prev.map((step) =>
-        step.id === id ? { ...step, status, resultMessage } : step
+        step.id === id ? { ...step, status, details, error } : step
       )
     );
   };
 
   // -------------------------------------------------------------
-  // MASTER PIPELINE: RUN AGENT (7 Sequential Stages)
+  // MASTER PIPELINE: RUN AGENT (4 Honest Stages)
+  // 1. Analisis foto
+  // 2. Potong produk
+  // 3. Buat latar
+  // 4. Tempel dan cek hasil
   // -------------------------------------------------------------
   const handleRunAgent = async () => {
     if (isGenerating) return;
     if (sourceImages.length === 0) {
-      setErrorMessage("Please upload at least one raw product photo (Source of Truth).");
+      setErrorMessage(language === "id" ? "Unggah minimal 1 foto produk asli." : "Please upload at least one raw product photo.");
       return;
     }
 
@@ -325,8 +351,8 @@ export default function Home() {
     setErrorMessage(null);
     setIsGenerating(true);
     setHasStarted(true);
-    setPipelineSteps(INITIAL_STEPS);
-    setCurrentLogMessage("Initializing VELLUM Photography Director pipeline...");
+    setPipelineSteps(getInitialSteps(language));
+    setCurrentLogMessage(language === "id" ? "Memulai proses studio fotografi produk..." : "Initializing photography studio pipeline...");
 
     try {
       // Blueprint Caching System (Source images & category based)
@@ -340,15 +366,14 @@ export default function Home() {
       let currentBlueprint: ProductBlueprint;
 
       if (isCacheValid && blueprint) {
-        // STEP 1 & 2 CACHING: Skip API analysis when raw images unchanged to save API calls
+        // STEP 1 CACHING: Skip API analysis when raw images unchanged
         currentBlueprint = blueprint;
-        updateStepStatus(1, "completed", "Loaded from Blueprint Cache (Source unchanged)");
-        updateStepStatus(2, "completed", "Active Blueprint constraint cached");
-        setCurrentLogMessage("Source unchanged — Skipping STEP 1 & 2 using cached Product Blueprint.");
+        updateStepStatus(1, "completed", language === "id" ? "Memakai hasil analisis dari cache" : "Loaded from Blueprint Cache");
+        setCurrentLogMessage(language === "id" ? "Foto produk tidak berubah — memakai hasil analisis dari cache." : "Source unchanged — using cached Product Blueprint.");
       } else {
-        // STEP 1: Analyze Raw Product
-        updateStepStatus(1, "running", `Inspecting ${sourceImages.length} raw angles`);
-        setCurrentLogMessage(`STEP 1: Multimodal inspection running on ${sourceImages.length} product images...`);
+        // STEP 1: Analisis foto
+        updateStepStatus(1, "running", language === "id" ? `Menganalisis ${sourceImages.length} foto produk` : `Analyzing ${sourceImages.length} product photos`);
+        setCurrentLogMessage(language === "id" ? `Menganalisis ${sourceImages.length} foto produk...` : `Analyzing ${sourceImages.length} product images...`);
 
         const analyzeRes = await fetch("/api/analyze", {
           method: "POST",
@@ -369,18 +394,16 @@ export default function Home() {
             setQuotaExceededNotice(true);
             setDemoRemaining(0);
           }
-          throw new Error(errData.error || "Step 1 failed: Raw product visual analysis failed.");
+          const msg = errData.error || (language === "id" ? "Analisis foto produk gagal." : "Product photo visual analysis failed.");
+          updateStepStatus(1, "failed", msg, msg);
+          throw new Error(msg);
         }
         const analyzeData = await analyzeRes.json();
         currentBlueprint = analyzeData.blueprint as ProductBlueprint;
         setBlueprint(currentBlueprint);
         setCachedSourceKey(currentSourceKey);
-        updateStepStatus(1, "completed", "Physical geometry and materials identified");
 
-        // STEP 2: Create Product Blueprint (F-06: Connect /api/blueprint)
-        updateStepStatus(2, "running", "Synthesizing structured constraint model");
-        setCurrentLogMessage("STEP 2: Synthesizing authoritative Product Blueprint...");
-
+        // Optional blueprint refine call
         try {
           const bpRes = await fetch("/api/blueprint", {
             method: "POST",
@@ -406,28 +429,12 @@ export default function Home() {
           console.warn("Failed to call /api/blueprint, using initial analyzed blueprint:", bpErr);
         }
 
-        updateStepStatus(2, "completed", "Blueprint generated as authoritative constraint");
+        updateStepStatus(1, "completed", language === "id" ? "Bentuk dan karakteristik produk teridentifikasi" : "Product geometry and features identified");
       }
 
-      // STEP 3: Analyze Reference (if uploaded)
-      if (referenceImages.length > 0) {
-        updateStepStatus(3, "running", "Extracting lighting and backdrop without copying geometry");
-        setCurrentLogMessage("STEP 3: Isolating lighting direction and color temperature from reference...");
-        await new Promise((r) => setTimeout(r, 600));
-        updateStepStatus(3, "completed", "Reference direction extracted (geometry ignored)");
-      } else {
-        updateStepStatus(3, "completed", "Using studio preset lighting (no reference)");
-      }
-
-      // STEP 4: Apply Product Locks
-      updateStepStatus(4, "running", "Applying rigid geometry and hardware constraints");
-      setCurrentLogMessage("STEP 4: Applying Product Lock constraints to prompt architecture...");
-      await new Promise((r) => setTimeout(r, 400));
-      updateStepStatus(4, "completed", "Product locks enforced on prompt architecture");
-
-      // STEP 5: Generate Images
-      updateStepStatus(5, "running", `Directing batch of ${generationCount} studio angles`);
-      setCurrentLogMessage(`STEP 5: Generating ${generationCount} studio photography angles...`);
+      // STEP 2: Potong produk & STEP 3: Buat latar
+      updateStepStatus(2, "running", language === "id" ? "Memotong produk dari latar aslinya..." : "Cutting out authentic product...");
+      setCurrentLogMessage(language === "id" ? "Memotong produk asli dan membuat latar foto..." : "Cutting out product and generating background...");
 
       const genRes = await fetch("/api/generate", {
         method: "POST",
@@ -446,14 +453,13 @@ export default function Home() {
 
       updateDemoRemaining(genRes);
 
-      // Note: HTTP 207 (partial success) is treated as ok by fetch — we must check the body
       const genData = await genRes.json().catch(() => ({})) as {
         success?: boolean;
         code?: string;
         outputs?: GeneratedOutput[];
         failedCount?: number;
-        errors?: { stage: string; message: string }[];
-        error?: { stage: string; message: string } | string;
+        stage?: string;
+        error?: { stage?: string; message?: string } | string;
       };
 
       if (!genRes.ok || genData.success === false) {
@@ -461,28 +467,43 @@ export default function Home() {
           setQuotaExceededNotice(true);
           setDemoRemaining(0);
         }
+        const errStage = typeof genData.error === "object" ? genData.error?.stage : undefined;
         const errMsg =
           typeof genData.error === "object" ? genData.error?.message
           : typeof genData.error === "string" ? genData.error
-          : "Step 5 failed: AI image generation service encountered an error.";
-        throw new Error(errMsg || "Step 5 failed: AI image generation service encountered an error.");
+          : (language === "id" ? "Gagal memproses foto produk." : "Generation service encountered an error.");
+
+        if (errStage === "segmentation") {
+          updateStepStatus(2, "failed", errMsg, errMsg);
+        } else if (errStage === "plate") {
+          updateStepStatus(2, "completed", language === "id" ? "Produk berhasil dipotong" : "Product cutout completed");
+          updateStepStatus(3, "failed", errMsg, errMsg);
+        } else if (errStage === "compositing") {
+          updateStepStatus(2, "completed", language === "id" ? "Produk berhasil dipotong" : "Product cutout completed");
+          updateStepStatus(3, "completed", language === "id" ? "Latar foto berhasil dibuat" : "Background plate generated");
+          updateStepStatus(4, "failed", errMsg, errMsg);
+        } else {
+          updateStepStatus(2, "failed", errMsg, errMsg);
+        }
+        throw new Error(errMsg);
       }
+
+      // Step 2 & 3 completed
+      updateStepStatus(2, "completed", language === "id" ? "Produk asli berhasil dipotong dari foto" : "Product cutout completed from original photo");
+      updateStepStatus(3, "completed", language === "id" ? "Latar foto dan pencahayaan studio dibuat" : "Studio background plate generated");
 
       const outputs = (genData.outputs ?? []) as GeneratedOutput[];
 
       if (genData.failedCount && genData.failedCount > 0 && outputs.length > 0) {
-        // Partial success — log warning, continue with what we have
         console.warn(`[Pipeline] Partial generation: ${outputs.length} succeeded, ${genData.failedCount} failed.`);
       }
-      updateStepStatus(5, "completed", `${outputs.length} images generated`);
 
-      // STEP 6: Validate Product Consistency (F-06: Connect /api/validate & Requirement 13)
-      updateStepStatus(6, "running", "Auditing consistency against original blueprint (Max 2 retries)");
-      setCurrentLogMessage("STEP 6: Running visual consistency audit across outputs...");
+      // STEP 4: Tempel dan cek hasil
+      updateStepStatus(4, "running", language === "id" ? "Menempel produk asli, bayangan alami, dan verifikasi kualitas" : "Compositing product, shadows, and auditing quality");
+      setCurrentLogMessage(language === "id" ? "Mengecek kesesuaian hasil foto dengan produk asli..." : "Verifying output photo against original product...");
 
       const auditedOutputs = await Promise.all(
         outputs.map(async (output: GeneratedOutput): Promise<GeneratedOutput> => {
-          // If already validated by provider without fallback, retain
           if (!output.validation.isFallback) return output;
 
           try {
@@ -521,7 +542,6 @@ export default function Home() {
 
       let finalOutputs = auditedOutputs;
       let retries = 0;
-      // Requirement 5: Retry maksimal 1x, hanya jika provider berbayar dan validasi gagal
       const isPaidProvider = Boolean(apiCredentials?.apiKey);
       const maxRetries = isPaidProvider ? 1 : 0;
 
@@ -530,7 +550,7 @@ export default function Home() {
         finalOutputs.some((o) => o.status === "rejected" || o.validation.status === "needs_regeneration")
       ) {
         retries++;
-        setCurrentLogMessage(`STEP 6: Quality validation failed. Auto-regenerating attempt 1/1...`);
+        setCurrentLogMessage(language === "id" ? "Validasi kualitas: membuat ulang 1x..." : "Quality validation: auto-regenerating attempt 1/1...");
 
         const regenPromises = finalOutputs.map(async (output: GeneratedOutput): Promise<GeneratedOutput> => {
           if (output.status !== "rejected" && output.validation.status !== "needs_regeneration") return output;
@@ -600,13 +620,9 @@ export default function Home() {
         finalOutputs = await Promise.all(regenPromises);
       }
 
-      updateStepStatus(6, "completed", `Consistency evaluated (${retries > 0 ? `${retries} auto-retries handled` : "Passed validation"})`);
-
-      // STEP 7: Finalize Images
-      updateStepStatus(7, "running", "Compiling final catalog results");
       setGeneratedOutputs(finalOutputs);
-      updateStepStatus(7, "completed", "Commercial photography session complete");
-      setCurrentLogMessage("Pipeline completed successfully. Product identity preserved.");
+      updateStepStatus(4, "completed", language === "id" ? `${finalOutputs.length} foto komersial siap digunakan` : `${finalOutputs.length} commercial photos ready`);
+      setCurrentLogMessage(language === "id" ? "Selesai! Foto produk komersial siap digunakan." : "Complete! Commercial product photos ready.");
 
       // Save session to history
       const scoredOutputs = finalOutputs.filter((o) => o.consistencyScore !== null);
@@ -635,14 +651,14 @@ export default function Home() {
         return;
       }
       console.warn("Pipeline warning:", err);
-      const msg = err instanceof Error ? err.message : "Pipeline execution failed. Please try again.";
+      const msg = err instanceof Error ? err.message : (language === "id" ? "Pemrosesan foto gagal. Silakan coba lagi." : "Pipeline execution failed. Please try again.");
       setErrorMessage(msg);
       setCurrentLogMessage(`ERROR: ${msg}`);
 
-      // Mark the active running step as failed
+      // Mark the active running step as failed with error message
       setPipelineSteps((prev) =>
         prev.map((step) =>
-          step.status === "running" ? { ...step, status: "failed" } : step
+          step.status === "running" ? { ...step, status: "failed", error: msg } : step
         )
       );
     } finally {
@@ -951,6 +967,7 @@ export default function Home() {
               hasStarted={hasStarted}
               blueprint={blueprint}
               onOpenBlueprint={() => setIsBlueprintModalOpen(true)}
+              onRetry={handleRunAgent}
               currentLogMessage={currentLogMessage}
             />
 
