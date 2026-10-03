@@ -19,9 +19,9 @@ interface HeaderProps {
 export function Header({
   onLoadDemoProduct,
   onOpenHistory,
-  onOpenApiSettings,
-  hasApiKey,
-  activeProviderName,
+  onOpenApiSettings: _onOpenApiSettings,
+  hasApiKey: _hasApiKey,
+  activeProviderName: _activeProviderName,
   historyCount,
   demoRemaining: _demoRemaining,
   isHistoryOpen,
@@ -46,22 +46,17 @@ export function Header({
 
       {/* Sisi Kanan (Actions & Indicators) */}
       <div className="flex items-center gap-2">
-        {/* Indikator Status API */}
-        <button
-          onClick={onOpenApiSettings}
-          type="button"
+        {/* Indikator Status AI Engine */}
+        <div
           id="header-api-key-badge"
-          aria-label="Status API Key"
-          className="h-8 flex items-center gap-2 px-2.5 py-1 rounded-md text-xs text-zinc-400 border border-zinc-800/80 bg-zinc-900/40 hover:bg-zinc-900/70 hover:border-zinc-700 transition-colors cursor-pointer"
-          title={hasApiKey ? (language === "id" ? "API Key Aktif" : "API Key Connected") : "API Status"}
+          className="h-8 flex items-center gap-2 px-2.5 py-1 rounded-md text-xs text-zinc-300 border border-zinc-800/80 bg-zinc-900/40 select-none"
+          title={language === "id" ? "AI Studio Engine aktif dan terhubung" : "AI Studio Engine active and connected"}
         >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
-          <span className="text-xs text-zinc-400 font-medium">
-            {activeProviderName && activeProviderName !== "gemini"
-              ? activeProviderName.toUpperCase()
-              : "Gemini Live"}
+          <span className="text-xs text-zinc-300 font-medium">
+            Gemini Live
           </span>
-        </button>
+        </div>
 
         {/* Tombol Demo Product */}
         <button

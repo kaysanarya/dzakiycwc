@@ -24,17 +24,20 @@ export class GeminiAIProvider implements AIProvider {
   private visionModel: string;
   private imageModel: string;
   private validationModel: string;
+  private judgeEnabled: boolean;
 
   constructor(options: {
     apiKey: string;
     visionModel?: string;
     imageModel?: string;
     validationModel?: string;
+    judgeEnabled?: boolean;
   }) {
     this.apiKey = options.apiKey;
-    this.visionModel = options.visionModel || "gemini-2.0-flash";
-    this.imageModel = options.imageModel || "imagen-3.0-generate-002";
-    this.validationModel = options.validationModel || "gemini-2.0-flash";
+    this.visionModel = options.visionModel || "gemini-3.5-flash";
+    this.imageModel = options.imageModel || "";
+    this.validationModel = options.validationModel || "gemini-3.5-flash";
+    this.judgeEnabled = options.judgeEnabled ?? false;
   }
 
   async analyzeProduct(input: AnalyzeProductInput): Promise<ProductBlueprint> {
@@ -123,8 +126,18 @@ Return only valid raw JSON.`;
         }
       );
 
+      if (response.status === 429) {
+        const errData = await response.json().catch(() => ({}));
+        const retryMsg = errData?.error?.message || "Quota API Gemini habis";
+        throw new AiPipelineError(
+          `Gemini API quota habis (429). ${retryMsg.slice(0, 200)}`,
+          "provider",
+          { provider: "gemini" }
+        );
+      }
+
       if (!response.ok) {
-        throw new Error(`Gemini Vision API error: ${response.statusText}`);
+        throw new Error(`Gemini Vision API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -199,6 +212,16 @@ Return JSON ONLY:
           }),
         }
       );
+
+      if (response.status === 429) {
+        const errData = await response.json().catch(() => ({}));
+        const retryMsg = errData?.error?.message || "Quota API Gemini habis";
+        throw new Error(`Gemini analyzeReference 429: ${retryMsg.slice(0, 150)}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(`Gemini analyzeReference API error: ${response.status} ${response.statusText}`);
+      }
 
       const data = await response.json();
       const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -367,13 +390,15 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
             const outMime = imagePart.inlineData.mimeType || "image/jpeg";
             const imageUrl = `data:${outMime};base64,${base64Out}`;
 
-            const validation = await this.validateProductConsistency({
-              sourceImages: input.sourceImages,
-              generatedImageUrl: imageUrl,
-              blueprint: input.blueprint,
-              locks: input.locks,
-              angle: `Commercial Angle ${i + 1}`,
-            });
+            const validation = this.judgeEnabled
+              ? await this.validateProductConsistency({
+                  sourceImages: input.sourceImages,
+                  generatedImageUrl: imageUrl,
+                  blueprint: input.blueprint,
+                  locks: input.locks,
+                  angle: `Commercial Angle ${i + 1}`,
+                })
+              : { score: null, checks: {}, status: "unverified" as const, notes: ["Judge off"], validatedAt: new Date().toISOString(), isFallback: true };
 
             return {
               id: `gemini-gen-${Date.now()}-${i + 1}`,
@@ -490,14 +515,16 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
         finalImageUrl = `data:image/jpeg;base64,${plateBuffer.toString("base64")}`;
       }
 
-      // 4. Validate product consistency using real Gemini Vision API
-      const validation = await this.validateProductConsistency({
-        sourceImages: input.sourceImages,
-        generatedImageUrl: finalImageUrl,
-        blueprint: input.blueprint,
-        locks: input.locks,
-        angle: `Commercial Angle ${i + 1}`,
-      });
+      // 4. Validate product consistency (only when AI_JUDGE=on)
+      const validation = this.judgeEnabled
+        ? await this.validateProductConsistency({
+            sourceImages: input.sourceImages,
+            generatedImageUrl: finalImageUrl,
+            blueprint: input.blueprint,
+            locks: input.locks,
+            angle: `Commercial Angle ${i + 1}`,
+          })
+        : { score: null, checks: {}, status: "unverified" as const, notes: ["Judge off — set AI_JUDGE=on untuk mengaktifkan validasi visual"], validatedAt: new Date().toISOString(), isFallback: true };
 
       return {
         id: `real-gen-${Date.now()}-${i + 1}`,
@@ -558,6 +585,17 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
   async validateProductConsistency(
     input: ValidateConsistencyInput
   ): Promise<ValidationResult> {
+    // Judge disabled: return unverified immediately to save API quota
+    if (!this.judgeEnabled) {
+      return {
+        score: null,
+        checks: {},
+        status: "unverified",
+        notes: ["Vision judge dinonaktifkan (AI_JUDGE=off). Set AI_JUDGE=on dan restart untuk mengaktifkan."],
+        validatedAt: new Date().toISOString(),
+        isFallback: true,
+      };
+    }
     try {
       const prompt = `You are a Commercial Studio Photography Quality Inspector auditing the compositing quality of a commercial product photo.
 Image 1 is the original raw product. Image 2 is the composited studio photograph.
@@ -655,6 +693,17 @@ Return JSON ONLY:
           }),
         }
       );
+
+      if (response.status === 429) {
+        // Quota habis — skip validation, return unverified (non-fatal)
+        const errData = await response.json().catch(() => ({}));
+        const retryDelay = errData?.error?.details?.find((d: {retryDelay?: string}) => d.retryDelay)?.retryDelay || "beberapa jam";
+        throw new Error(`Gemini validation 429: quota habis, coba lagi dalam ${retryDelay}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(`Gemini validation API error: ${response.status} ${response.statusText}`);
+      }
 
       const data = await response.json();
       const content = data.candidates?.[0]?.content?.parts?.[0]?.text;

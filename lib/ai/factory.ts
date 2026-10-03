@@ -38,23 +38,33 @@ export function getAIProvider(options?: ProviderOptions): AIProvider {
 
   if (chosenProvider === "gemini") {
     const rawVision = process.env.AI_VISION_MODEL?.trim();
-    const visionModel = (!rawVision || rawVision.includes("2.0") || rawVision.includes("1.5"))
-      ? "gemini-3.8-flash"
+    // Default to probe-validated model; skip stale/quota-exhausted defaults
+    const visionModel = (!rawVision || rawVision === "gemini-2.0-flash" || rawVision === "gemini-3.8-flash" || rawVision.includes("1.5"))
+      ? "gemini-3.5-flash"  // probe 2026-10-04: 3.5-flash=200OK, 3.8-flash=429
       : rawVision;
 
     const rawImage = process.env.AI_IMAGE_MODEL?.trim();
-    const imageModel = rawImage || "imagen-3.0-generate-002";
+    // Only use imageModel if explicitly set and valid — do NOT default to imagen (not available on free tier)
+    const imageModel = rawImage || "";
 
     const rawValidation = process.env.AI_VALIDATION_MODEL?.trim();
-    const validationModel = (!rawValidation || rawValidation.includes("2.0") || rawValidation.includes("1.5"))
-      ? "gemini-3.8-flash"
+    const validationModel = (!rawValidation || rawValidation === "gemini-2.0-flash" || rawValidation === "gemini-3.8-flash" || rawValidation.includes("1.5"))
+      ? "gemini-3.5-flash"
       : rawValidation;
+
+    // AI_JUDGE=on enables vision validation; off=skip judge, mark as "unverified" (saves quota)
+    const judgeEnabled = (process.env.AI_JUDGE ?? "off").toLowerCase() === "on";
+
+    console.log(
+      `[factory/gemini] visionModel=${visionModel} | imageModel=${imageModel || "(none-pollinations)"} | judge=${judgeEnabled ? "on" : "off"}`
+    );
 
     return new GeminiAIProvider({
       apiKey,
       visionModel,
       imageModel,
       validationModel,
+      judgeEnabled,
     });
   }
 

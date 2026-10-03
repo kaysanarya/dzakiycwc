@@ -13,7 +13,6 @@ import { BlueprintModal } from "@/components/blueprint/BlueprintModal";
 import { BeforeAfterSlider } from "@/components/before-after/BeforeAfterSlider";
 import { HistoryDrawer } from "@/components/history/HistoryDrawer";
 import { ConceptArtGenerator } from "@/components/concept-art/ConceptArtGenerator";
-import { ApiSettingsModal, type ApiCredentials } from "@/components/api-settings/ApiSettingsModal";
 
 import {
   UploadedImage,
@@ -46,7 +45,6 @@ import {
   Sparkles,
   Layers,
   Clock,
-  KeyRound,
   Sliders,
   Camera,
 } from "lucide-react";
@@ -140,26 +138,7 @@ export default function Home() {
   const [isBlueprintModalOpen, setIsBlueprintModalOpen] = useState(false);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const [isConceptArtOpen, setIsConceptArtOpen] = useState(false);
-  const [isApiSettingsOpen, setIsApiSettingsOpen] = useState(false);
 
-  // BYOK Credentials State (persisted in browser storage)
-  const [apiCredentials, setApiCredentials] = useState<ApiCredentials | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = localStorage.getItem("vellum_api_credentials") || sessionStorage.getItem("vellum_api_credentials");
-      if (!saved) return null;
-      const parsed = JSON.parse(saved) as ApiCredentials;
-      // Auto-validate sanity: ignore corrupted or invalid test keys
-      if (!parsed?.apiKey || parsed.apiKey.trim().length < 25) {
-        localStorage.removeItem("vellum_api_credentials");
-        sessionStorage.removeItem("vellum_api_credentials");
-        return null;
-      }
-      return parsed;
-    } catch {
-      return null;
-    }
-  });
 
   // Demo Quota Remaining (from x-demo-remaining header and /api/status)
   const [demoRemaining, setDemoRemaining] = useState<number | null>(null);
@@ -191,38 +170,10 @@ export default function Home() {
     }
   };
 
-  const handleSaveCredentials = (creds: ApiCredentials | null, remember?: boolean) => {
-    setApiCredentials(creds);
-    try {
-      if (creds) {
-        sessionStorage.setItem("vellum_api_credentials", JSON.stringify(creds));
-        if (remember) {
-          localStorage.setItem("vellum_api_credentials", JSON.stringify(creds));
-          localStorage.setItem("vellum_remember_credentials", "true");
-        } else {
-          localStorage.removeItem("vellum_api_credentials");
-          localStorage.removeItem("vellum_remember_credentials");
-        }
-      } else {
-        sessionStorage.removeItem("vellum_api_credentials");
-        localStorage.removeItem("vellum_api_credentials");
-        localStorage.removeItem("vellum_remember_credentials");
-      }
-    } catch {
-      // ignore
-    }
-  };
 
-  const getAuthHeaders = (): Record<string, string> => {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (apiCredentials?.apiKey) {
-      headers["x-api-key"] = apiCredentials.apiKey;
-      headers["x-provider"] = apiCredentials.provider;
-    }
-    return headers;
-  };
+  const getAuthHeaders = (): Record<string, string> => ({
+    "Content-Type": "application/json",
+  });
 
   const [historyItems, setHistoryItems] = useState<GenerationHistoryItem[]>(() => {
     if (typeof window === "undefined") return [];
@@ -462,15 +413,7 @@ export default function Home() {
             setQuotaExceededNotice(true);
             setDemoRemaining(0);
           }
-          if (errData.error?.includes("tidak sah") || errData.error?.includes("Pengaturan API Key")) {
-            try {
-              localStorage.removeItem("vellum_api_credentials");
-              sessionStorage.removeItem("vellum_api_credentials");
-              setApiCredentials(null);
-            } catch {
-              // ignore
-            }
-          }
+
           const msg = errData.error || (language === "id" ? "Analisis foto produk gagal." : "Product photo visual analysis failed.");
           updateStepStatus(1, "failed", msg, msg);
           throw new Error(msg);
@@ -542,15 +485,7 @@ export default function Home() {
           setQuotaExceededNotice(true);
           setDemoRemaining(0);
         }
-        if (typeof genData.error === "string" && (genData.error.includes("tidak sah") || genData.error.includes("Pengaturan API Key"))) {
-          try {
-            localStorage.removeItem("vellum_api_credentials");
-            sessionStorage.removeItem("vellum_api_credentials");
-            setApiCredentials(null);
-          } catch {
-            // ignore
-          }
-        }
+
         const errStage = typeof genData.error === "object" ? genData.error?.stage : undefined;
         const errMsg =
           typeof genData.error === "object" ? genData.error?.message
@@ -752,9 +687,8 @@ export default function Home() {
           }
         }}
         isHistoryOpen={isRightSidebarOpen}
-        onOpenApiSettings={() => setIsApiSettingsOpen(true)}
-        hasApiKey={Boolean(apiCredentials?.apiKey)}
-        activeProviderName={apiCredentials?.provider}
+        hasApiKey={true}
+        activeProviderName="gemini"
         historyCount={historyItems.length}
         demoRemaining={demoRemaining}
       />
@@ -791,7 +725,6 @@ export default function Home() {
                   <CameraSettings
                     direction={direction}
                     onChangeDirection={setDirection}
-                    activeProvider={apiCredentials?.apiKey ? apiCredentials.provider : undefined}
                     hideAdvancedSection={true}
                   />
                 </div>
@@ -829,7 +762,6 @@ export default function Home() {
                         <CameraSettings
                           direction={direction}
                           onChangeDirection={setDirection}
-                          activeProvider={apiCredentials?.apiKey ? apiCredentials.provider : undefined}
                           hideAdvancedSection={false}
                         />
                       </div>
@@ -896,21 +828,6 @@ export default function Home() {
 
           {/* 4. Tombol Utama "Buat foto" (Sticky di bawah panel kiri) */}
           <div className="p-3 border-t border-zinc-800 bg-zinc-950/95 sticky bottom-0 z-10 space-y-2">
-            {!apiCredentials?.apiKey && sourceImages.length > 0 && (
-              <div className="p-2 rounded bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400/80" />
-                  <span>{language === "id" ? "Mode Demo" : "Demo Mode"}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsApiSettingsOpen(true)}
-                  className="font-medium text-zinc-300 hover:text-white underline cursor-pointer"
-                >
-                  {language === "id" ? "Atur Key" : "Set Key"}
-                </button>
-              </div>
-            )}
 
             <button
               type="button"
@@ -956,15 +873,15 @@ export default function Home() {
           {quotaExceededNotice && (
             <div className="mb-4 p-3 rounded-lg bg-amber-950/50 border border-amber-800 text-xs text-amber-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>{t.quota.exceededTitle}: {t.quota.exceededMessage}</span>
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>{language === "id" ? "Batas antrean demo tercapai. Silakan coba kembali beberapa saat lagi." : "Demo queue limit reached. Please try again shortly."}</span>
               </div>
               <button
                 type="button"
-                onClick={() => setIsApiSettingsOpen(true)}
-                className="btn-secondary h-7 px-2.5 text-xs shrink-0 ml-3"
+                onClick={() => setQuotaExceededNotice(false)}
+                className="font-semibold underline hover:text-white cursor-pointer ml-3"
               >
-                {t.quota.useOwnKey}
+                {t.page.dismiss}
               </button>
             </div>
           )}
@@ -1346,16 +1263,7 @@ export default function Home() {
         onClose={() => setIsConceptArtOpen(false)}
       />
 
-      {/* BYOK API Settings Modal */}
-      <ApiSettingsModal
-        isOpen={isApiSettingsOpen}
-        onClose={() => setIsApiSettingsOpen(false)}
-        onSaveCredentials={(creds, remember) => {
-          handleSaveCredentials(creds, remember);
-          if (creds?.apiKey) setQuotaExceededNotice(false);
-        }}
-        currentCredentials={apiCredentials}
-      />
+
     </div>
   );
 }

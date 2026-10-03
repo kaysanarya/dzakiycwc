@@ -102,7 +102,7 @@ export function buildStructuredPrompt(params: PromptBuildParams): StructuredProm
     : "Reference may gently influence aesthetic context without morphing product structure.";
 
   // 6. Marketplace Preset specs
-  const marketplaceSpec = `Marketplace target: ${direction.marketplacePreset.toUpperCase()} framing with aspect ratio ${direction.aspectRatio}. Product scale safe margins respected.`;
+  const marketplaceSpec = `Marketplace target: ${(direction.marketplacePreset ?? "general").toUpperCase()} framing with aspect ratio ${direction.aspectRatio}. Product scale safe margins respected.`;
 
   // 7. Reference Strength computation (0 - 100 -> float 0.0 - 1.0)
   const refStrengthNum = Math.max(0, Math.min(100, preservation.referenceStrength ?? 70));
