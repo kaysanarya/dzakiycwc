@@ -149,7 +149,15 @@ export default function Home() {
     if (typeof window === "undefined") return null;
     try {
       const saved = localStorage.getItem("vellum_api_credentials") || sessionStorage.getItem("vellum_api_credentials");
-      return saved ? (JSON.parse(saved) as ApiCredentials) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved) as ApiCredentials;
+      // Auto-validate sanity: ignore corrupted or invalid test keys
+      if (!parsed?.apiKey || parsed.apiKey.trim().length < 25) {
+        localStorage.removeItem("vellum_api_credentials");
+        sessionStorage.removeItem("vellum_api_credentials");
+        return null;
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -456,6 +464,15 @@ export default function Home() {
             setQuotaExceededNotice(true);
             setDemoRemaining(0);
           }
+          if (errData.error?.includes("tidak sah") || errData.error?.includes("Pengaturan API Key")) {
+            try {
+              localStorage.removeItem("vellum_api_credentials");
+              sessionStorage.removeItem("vellum_api_credentials");
+              setApiCredentials(null);
+            } catch {
+              // ignore
+            }
+          }
           const msg = errData.error || (language === "id" ? "Analisis foto produk gagal." : "Product photo visual analysis failed.");
           updateStepStatus(1, "failed", msg, msg);
           throw new Error(msg);
@@ -526,6 +543,15 @@ export default function Home() {
         if (genRes.status === 429 || genData.code === "DEMO_QUOTA_EXCEEDED") {
           setQuotaExceededNotice(true);
           setDemoRemaining(0);
+        }
+        if (typeof genData.error === "string" && (genData.error.includes("tidak sah") || genData.error.includes("Pengaturan API Key"))) {
+          try {
+            localStorage.removeItem("vellum_api_credentials");
+            sessionStorage.removeItem("vellum_api_credentials");
+            setApiCredentials(null);
+          } catch {
+            // ignore
+          }
         }
         const errStage = typeof genData.error === "object" ? genData.error?.stage : undefined;
         const errMsg =

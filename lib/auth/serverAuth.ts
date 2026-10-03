@@ -27,7 +27,7 @@ export const MAX_BODY_SIZE_BYTES = 15 * 1024 * 1024;
  */
 function isValidGeminiKey(key?: string): boolean {
   if (!key || key.trim().length < 10) return false;
-  const k = key.trim();
+  const k = key.trim().replace(/^["']|["']$/g, "");
   return k.startsWith("AIza") && k.length >= 35;
 }
 
@@ -37,7 +37,7 @@ function isValidGeminiKey(key?: string): boolean {
  */
 function isValidOpenAiKey(key?: string): boolean {
   if (!key || key.trim().length < 10) return false;
-  const k = key.trim();
+  const k = key.trim().replace(/^["']|["']$/g, "");
   return k.startsWith("sk-") && k.length >= 30;
 }
 
@@ -300,10 +300,22 @@ export async function validateApiKeyAndProvider(
     else if (prov === "gemini") isValid = isValidGeminiKey(clientKey);
 
     if (!isValid) {
+      // If client-provided key is invalid, check if we have a valid server key fallback!
+      const serverKey = resolveServerApiKey(prov);
+      if (serverKey) {
+        return {
+          allowed: true,
+          apiKey: serverKey,
+          provider: prov,
+          isDemo: false,
+          isByok: false,
+        };
+      }
+
       return {
         allowed: false,
         status: 400,
-        error: `Format API key untuk provider ${prov} tidak sah. Harap periksa kembali di Pengaturan API Key.`,
+        error: `Format API key untuk provider ${prov} tidak sah. Harap periksa kembali di Pengaturan API Key atau masukkan GEMINI_API_KEY di .env.local.`,
         provider: prov,
         isDemo: false,
         isByok: true,
@@ -365,10 +377,31 @@ export async function validateApiKeyAndProvider(
   const resolvedApiKey = resolveServerApiKey(resolvedProvider);
 
   if (resolvedProvider === "demo" || !resolvedApiKey) {
+    if (process.env.DISABLE_DEMO_MODE === "true") {
+      return {
+        allowed: false,
+        status: 403,
+        error: "Mode demo dinonaktifkan. Harap isi GEMINI_API_KEY di file .env.local untuk memproses foto menggunakan AI nyata.",
+        provider: "gemini",
+        isDemo: false,
+        isByok: false,
+      };
+    }
     return {
       allowed: true,
       provider: "demo",
       isDemo: true,
+      isByok: false,
+    };
+  }
+
+  // If DISABLE_DEMO_MODE is true, bypass quota completely for real generation
+  if (process.env.DISABLE_DEMO_MODE === "true") {
+    return {
+      allowed: true,
+      apiKey: resolvedApiKey,
+      provider: resolvedProvider,
+      isDemo: false,
       isByok: false,
     };
   }
