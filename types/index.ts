@@ -62,28 +62,7 @@ export interface ProductBlueprint {
 }
 
 export interface ProductLocks {
-  lockShape: boolean;
-  lockStrap: boolean;
-  lockOutsole: boolean;
-  lockLogo: boolean;
-  lockBuckle: boolean;
-  lockOrnament: boolean;
-  lockMaterial: boolean;
-  lockTexture: boolean;
-  lockStitching: boolean;
-  lockColor: boolean;
-  lockProportion: boolean;
-  lockConstruction: boolean;
-  
-  // Footwear-specific heel locks
-  lockHeelHeight: boolean;
-  lockHeelWidth: boolean;
-  lockHeelAngle: boolean;
-  lockHeelPosition: boolean;
-  lockHeelShape: boolean;
-  lockHeelThickness: boolean;
-  lockFrontSoleThickness: boolean;
-  lockHeelProportion: boolean;
+  preserveProductDetails: boolean;
 }
 
 export type CameraAngle =

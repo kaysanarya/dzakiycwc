@@ -7,9 +7,7 @@ import { ProductSourceUpload } from "@/components/upload/ProductSourceUpload";
 import { ReferenceUpload } from "@/components/upload/ReferenceUpload";
 import { ProductSpec } from "@/components/product-spec/ProductSpec";
 import { CameraSettings } from "@/components/camera-settings/CameraSettings";
-import { PreservationControls } from "@/components/preservation/PreservationControls";
 import { ProductLocks } from "@/components/product-lock/ProductLocks";
-import { FootwearHeelLock } from "@/components/heel-lock/FootwearHeelLock";
 import { AgentMonitor } from "@/components/agent-monitor/AgentMonitor";
 import { BlueprintModal } from "@/components/blueprint/BlueprintModal";
 import { ResultGallery } from "@/components/result-gallery/ResultGallery";
@@ -19,7 +17,6 @@ import { ConceptArtGenerator } from "@/components/concept-art/ConceptArtGenerato
 import {
   UploadedImage,
   ProductCategory,
-  FootwearHeelSpecs,
   PhotographyDirection,
   PreservationSettings,
   ProductLocks as ProductLocksType,
@@ -51,26 +48,7 @@ const INITIAL_STEPS: AgentStep[] = [
 ];
 
 const DEFAULT_LOCKS: ProductLocksType = {
-  lockShape: true,
-  lockStrap: true,
-  lockOutsole: true,
-  lockLogo: true,
-  lockBuckle: true,
-  lockOrnament: true,
-  lockMaterial: true,
-  lockTexture: true,
-  lockStitching: true,
-  lockColor: true,
-  lockProportion: true,
-  lockConstruction: true,
-  lockHeelHeight: true,
-  lockHeelWidth: true,
-  lockHeelAngle: true,
-  lockHeelPosition: true,
-  lockHeelShape: true,
-  lockHeelThickness: true,
-  lockFrontSoleThickness: true,
-  lockHeelProportion: true,
+  preserveProductDetails: true,
 };
 
 export default function Home() {
@@ -82,15 +60,6 @@ export default function Home() {
 
   // Product Spec & Locks
   const [category, setCategory] = useState<ProductCategory>("footwear");
-  const [heelSpecs, setHeelSpecs] = useState<FootwearHeelSpecs>({
-    heelHeight: "85mm (3.35 inches)",
-    heelWidth: "42mm crown to 48mm flared base",
-    heelAngle: "88° structural pitch",
-    heelPosition: "Directly centered below calcaneus",
-    heelShape: "Hourglass flared block",
-    heelThickness: "Substantial architectural block",
-    frontSoleThickness: "6mm beveled leather welt",
-  });
   const [locks, setLocks] = useState<ProductLocksType>(DEFAULT_LOCKS);
 
   // Photography Direction
@@ -360,13 +329,12 @@ export default function Home() {
     setCurrentLogMessage("Initializing VELLUM Photography Director pipeline...");
 
     try {
-      // Blueprint Caching System (Requirement 13, F-14: Include full heelSpecs in cache key)
-      const heelKey = category === "footwear" ? JSON.stringify(heelSpecs) : "";
-      const currentSourceKey = `${category}-${heelKey}-${sourceImages.map((img) => img.id + "_" + img.size).join("|")}`;
+      // Blueprint Caching System (Source images & category based)
+      const currentSourceKey = `${category}-${sourceImages.map((img) => img.id + "_" + img.size).join("|")}`;
       const isCacheValid = Boolean(blueprint) && cachedSourceKey === currentSourceKey;
 
       const footwearNotes = category === "footwear"
-        ? `Footwear Heel Specs: Height: ${heelSpecs.heelHeight}, Width: ${heelSpecs.heelWidth}, Shape: ${heelSpecs.heelShape}, Angle: ${heelSpecs.heelAngle}, Position: ${heelSpecs.heelPosition}, Thickness: ${heelSpecs.heelThickness}, Front Sole: ${heelSpecs.frontSoleThickness}`
+        ? "Footwear product: preserve authentic shoe proportions and contours."
         : undefined;
 
       let currentBlueprint: ProductBlueprint;
@@ -887,21 +855,7 @@ export default function Home() {
               <ProductSpec
                 category={category}
                 onChangeCategory={(cat) => setCategory(cat)}
-                heelSpecs={heelSpecs}
-                onChangeHeelSpecs={setHeelSpecs}
-                strictProductMode={preservation.strictProductMode}
-                onToggleStrictMode={(val) =>
-                  setPreservation({ ...preservation, strictProductMode: val })
-                }
-                ignoreProductDesignFromReference={
-                  preservation.ignoreProductDesignFromReference
-                }
-                onToggleIgnoreRefDesign={(val) =>
-                  setPreservation({
-                    ...preservation,
-                    ignoreProductDesignFromReference: val,
-                  })
-                }
+                detectedLabel={blueprint?.category === "footwear" ? "sepatu hak" : blueprint?.subcategory}
               />
 
               {/* SECTION 3: CAMERA & ENVIRONMENT */}
@@ -910,21 +864,8 @@ export default function Home() {
                 onChangeDirection={setDirection}
               />
 
-              {/* SECTION 4: PRESERVATION & CONSISTENCY */}
-              <PreservationControls
-                settings={preservation}
-                onChangeSettings={setPreservation}
-              />
-
-              {/* SECTION 5: PRODUCT LOCK */}
+              {/* SECTION 4: PRODUCT LOCK */}
               <ProductLocks locks={locks} onChangeLocks={setLocks} />
-
-              {/* FOOTWEAR HEEL LOCK (Rendered strictly when category === footwear) */}
-              <FootwearHeelLock
-                locks={locks}
-                onChangeLocks={setLocks}
-                category={category}
-              />
 
               {/* BOTTOM EXECUTION BAR - Clean, Centered & Simple */}
               <div className="pt-6 border-t border-white/[0.05] flex flex-col items-center justify-center gap-3.5 w-full">
