@@ -115,9 +115,6 @@ export class DemoAIProvider implements AIProvider {
       const sourceImg = input.sourceImages && input.sourceImages.length > 0
         ? input.sourceImages[i % input.sourceImages.length]?.dataUrl
         : null;
-      const refImg = input.referenceImages && input.referenceImages.length > 0
-        ? input.referenceImages[0]?.dataUrl
-        : undefined;
 
       // Architecture Refactor: Naive compositor removed.
       // Returns authentic studio render templates with blueprint mapping.

@@ -439,16 +439,6 @@ export function CameraSettings({
         <div className="grid grid-cols-5 gap-2 sm:gap-2.5">
           {(["1:1", "4:5", "3:4", "16:9", "9:16"] as AspectRatio[]).map((ratio) => {
             const isSelected = direction.aspectRatio === ratio;
-            const ratioLabel =
-              ratio === "1:1"
-                ? "Square (1:1)"
-                : ratio === "4:5"
-                ? "Portrait (4:5)"
-                : ratio === "3:4"
-                ? "Catalog (3:4)"
-                : ratio === "16:9"
-                ? "Wide (16:9)"
-                : "Vertical (9:16)";
             return (
               <button
                 key={ratio}

@@ -22,7 +22,7 @@ interface AgentMonitorProps {
 
 export function AgentMonitor({
   steps,
-  isGenerating,
+  isGenerating: _isGenerating,
   hasStarted,
   blueprint,
   onOpenBlueprint,

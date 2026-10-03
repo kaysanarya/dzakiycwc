@@ -246,7 +246,7 @@ export class ReplicateAIProvider implements AIProvider {
     return successfulOutputs;
   }
 
-  async validateProductConsistency(input: ValidateConsistencyInput): Promise<ValidationResult> {
+  async validateProductConsistency(_input: ValidateConsistencyInput): Promise<ValidationResult> {
     return {
       score: null,
       checks: {},

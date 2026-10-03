@@ -2,7 +2,7 @@
 
 import React from "react";
 import { PreservationSettings } from "@/types";
-import { Sliders, Sparkles, ShieldCheck, Info, Camera, Box } from "lucide-react";
+import { Info, Camera, Box } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface PreservationControlsProps {
@@ -14,7 +14,7 @@ export function PreservationControls({
   settings,
   onChangeSettings,
 }: PreservationControlsProps) {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
 
   return (
     <div className="space-y-4 pt-2">

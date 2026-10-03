@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { ProductLocks as ProductLocksType } from "@/types";
-import { Lock, Unlock, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Lock, AlertTriangle } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface ProductLocksProps {

@@ -1,12 +1,5 @@
 import React from "react";
 
-interface VellumLogoProps {
-  className?: string;
-  size?: number;
-  showText?: boolean;
-  textColor?: string;
-}
-
 export function VellumLogoMark({
   className = "w-8 h-8",
   color = "currentColor",

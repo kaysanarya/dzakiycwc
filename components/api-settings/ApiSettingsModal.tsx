@@ -67,6 +67,8 @@ export function ApiSettingsModal({
 
   useEffect(() => {
     if (currentCredentials) {
+      // Sinkronisasi state form modal ketika kredensial eksternal berubah atau modal dibuka
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProvider(currentCredentials.provider);
       setApiKey(currentCredentials.apiKey);
     } else {
