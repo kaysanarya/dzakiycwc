@@ -80,7 +80,7 @@ async function runVerification() {
         if (vp.name === "desktop" && (st.id === "empty" || st.id === "success")) {
           await page.evaluate(axeCore.source);
           const axeReport = await page.evaluate(async () => {
-            // @ts-ignore
+            // @ts-expect-error axe is injected on window via evaluate
             return await window.axe.run(document, {
               runOnly: {
                 type: "tag",

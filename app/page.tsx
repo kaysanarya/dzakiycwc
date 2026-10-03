@@ -159,54 +159,6 @@ export default function Home() {
   const [demoRemaining, setDemoRemaining] = useState<number | null>(null);
   const [quotaExceededNotice, setQuotaExceededNotice] = useState<boolean>(false);
 
-  // Automated Test State Hook (deterministic verification of 5 required states)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const testState = params.get("testState");
-    if (!testState) return;
-
-    if (testState === "empty") {
-      setSourceImages([]);
-      setGeneratedOutputs([]);
-      setIsGenerating(false);
-      setHasStarted(false);
-      setErrorMessage(null);
-    } else if (testState === "uploaded") {
-      setSourceImages(DEMO_SOURCE_IMAGES);
-      setGeneratedOutputs([]);
-      setIsGenerating(false);
-      setHasStarted(false);
-      setErrorMessage(null);
-    } else if (testState === "generating") {
-      setSourceImages(DEMO_SOURCE_IMAGES);
-      setGeneratedOutputs([]);
-      setIsGenerating(true);
-      setHasStarted(true);
-      setErrorMessage(null);
-      setPipelineSteps([
-        { id: 1, key: "analyze", title: "Analisis foto", description: "Mengenali bentuk dan detail fisik produk", status: "completed", details: "Karakteristik geometri sepatu teridentifikasi" },
-        { id: 2, key: "cutout", title: "Potong produk", description: "Memisahkan produk asli dari latar foto", status: "running" },
-        { id: 3, key: "background", title: "Buat latar", description: "Membuat latar studio dan tata cahaya", status: "pending" },
-        { id: 4, key: "composite", title: "Tempel dan cek hasil", description: "Menempel produk asli, bayangan alami, dan verifikasi", status: "pending" },
-      ]);
-      setCurrentLogMessage("Memotong produk asli dari latar foto...");
-    } else if (testState === "success") {
-      handleLoadDemoProduct();
-    } else if (testState === "failed") {
-      setSourceImages(DEMO_SOURCE_IMAGES);
-      setIsGenerating(false);
-      setHasStarted(true);
-      setErrorMessage("Segmentasi gagal: Latar foto terlalu rumit. Silakan unggah foto produk dengan latar polos.");
-      setPipelineSteps([
-        { id: 1, key: "analyze", title: "Analisis foto", description: "Mengenali bentuk dan detail fisik produk", status: "completed" },
-        { id: 2, key: "cutout", title: "Potong produk", description: "Memisahkan produk asli dari latar foto", status: "failed", error: "Latar foto terlalu rumit" },
-        { id: 3, key: "background", title: "Buat latar", description: "Membuat latar studio dan tata cahaya", status: "pending" },
-        { id: 4, key: "composite", title: "Tempel dan cek hasil", description: "Menempel produk asli, bayangan alami, dan verifikasi", status: "pending" },
-      ]);
-    }
-  }, []);
-
   useEffect(() => {
     fetch("/api/status")
       .then((res) => {
@@ -366,6 +318,57 @@ export default function Home() {
     );
     setCurrentLogMessage(language === "id" ? "Produk demo berhasil dimuat." : "Demo footwear project loaded.");
   };
+
+  // Automated Test State Hook (deterministic verification of 5 required states for audit)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const testState = params.get("testState");
+    if (!testState) return;
+
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (testState === "empty") {
+      setSourceImages([]);
+      setGeneratedOutputs([]);
+      setIsGenerating(false);
+      setHasStarted(false);
+      setErrorMessage(null);
+    } else if (testState === "uploaded") {
+      setSourceImages(DEMO_SOURCE_IMAGES);
+      setGeneratedOutputs([]);
+      setIsGenerating(false);
+      setHasStarted(false);
+      setErrorMessage(null);
+    } else if (testState === "generating") {
+      setSourceImages(DEMO_SOURCE_IMAGES);
+      setGeneratedOutputs([]);
+      setIsGenerating(true);
+      setHasStarted(true);
+      setErrorMessage(null);
+      setPipelineSteps([
+        { id: 1, key: "analyze", title: "Analisis foto", description: "Mengenali bentuk dan detail fisik produk", status: "completed", details: "Karakteristik geometri sepatu teridentifikasi" },
+        { id: 2, key: "cutout", title: "Potong produk", description: "Memisahkan produk asli dari latar foto", status: "running" },
+        { id: 3, key: "background", title: "Buat latar", description: "Membuat latar studio dan tata cahaya", status: "pending" },
+        { id: 4, key: "composite", title: "Tempel dan cek hasil", description: "Menempel produk asli, bayangan alami, dan verifikasi", status: "pending" },
+      ]);
+      setCurrentLogMessage("Memotong produk asli dari latar foto...");
+    } else if (testState === "success") {
+      handleLoadDemoProduct();
+    } else if (testState === "failed") {
+      setSourceImages(DEMO_SOURCE_IMAGES);
+      setIsGenerating(false);
+      setHasStarted(true);
+      setErrorMessage("Segmentasi gagal: Latar foto terlalu rumit. Silakan unggah foto produk dengan latar polos.");
+      setPipelineSteps([
+        { id: 1, key: "analyze", title: "Analisis foto", description: "Mengenali bentuk dan detail fisik produk", status: "completed" },
+        { id: 2, key: "cutout", title: "Potong produk", description: "Memisahkan produk asli dari latar foto", status: "failed", error: "Latar foto terlalu rumit" },
+        { id: 3, key: "background", title: "Buat latar", description: "Membuat latar studio dan tata cahaya", status: "pending" },
+        { id: 4, key: "composite", title: "Tempel dan cek hasil", description: "Menempel produk asli, bayangan alami, dan verifikasi", status: "pending" },
+      ]);
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // History load callback
   const handleLoadHistoryItem = (item: GenerationHistoryItem) => {
