@@ -765,7 +765,7 @@ export default function Home() {
         {/* LEFT PANEL: Fixed 320px on Desktop, Viewport Height       */}
         {/* 1) Upload, 2) Preset Latar, 3) Aspek Rasio, 4) Tombol CTA */}
         {/* ========================================================= */}
-        <aside className="w-full lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px] border-b lg:border-b-0 lg:border-r border-zinc-800 bg-zinc-950 flex flex-col lg:h-[calc(100vh-53px)] shrink-0">
+        <aside className="w-full lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px] border-b lg:border-b-0 lg:border-r border-zinc-800 bg-zinc-950 flex flex-col lg:h-[calc(100vh-56px)] shrink-0">
           {/* Scrollable controls container */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {/* 1. Upload Foto Produk */}
@@ -914,7 +914,7 @@ export default function Home() {
         {/* ========================================================= */}
         {/* CENTER CANVAS: Results are the center of the screen       */}
         {/* ========================================================= */}
-        <main className="flex-1 flex flex-col min-h-0 lg:h-[calc(100vh-53px)] overflow-y-auto p-4 lg:p-6 bg-zinc-950">
+        <main className="flex-1 flex flex-col min-h-0 lg:h-[calc(100vh-56px)] overflow-y-auto p-4 lg:p-6 bg-zinc-950">
           {/* Error Notice */}
           {errorMessage && (
             <div className="mb-4 p-3 rounded-lg bg-red-950/50 border border-red-800 text-xs text-red-200 flex items-center justify-between">
@@ -1187,7 +1187,7 @@ export default function Home() {
         {/* RIGHT PANEL: Collapsible 240px History on Desktop         */}
         {/* ========================================================= */}
         <aside
-          className={`hidden lg:flex flex-col border-l border-zinc-800 bg-zinc-950 h-[calc(100vh-53px)] transition-all duration-200 shrink-0 ${
+          className={`hidden lg:flex flex-col border-l border-zinc-800 bg-zinc-950 h-[calc(100vh-56px)] transition-all duration-200 shrink-0 ${
             isRightSidebarOpen ? "w-[240px] min-w-[240px] max-w-[240px]" : "w-[44px] min-w-[44px] max-w-[44px]"
           }`}
         >
