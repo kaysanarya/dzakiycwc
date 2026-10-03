@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { X, Sliders, SplitSquareVertical } from "lucide-react";
 
 interface BeforeAfterSliderProps {
@@ -21,8 +21,29 @@ export function BeforeAfterSlider({
   onClose,
 }: BeforeAfterSliderProps) {
   const [sliderPosition, setSliderPosition] = useState(50); // percentage
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const element = containerRef.current;
+    if (!element) return;
+
+    setContainerWidth(element.clientWidth);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(element);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [isOpen]);
 
   const handleMove = useCallback((clientX: number) => {
     if (!containerRef.current) return;
@@ -113,7 +134,7 @@ export function BeforeAfterSlider({
                 src={sourceUrl}
                 alt="Original Source Product"
                 className="absolute inset-0 w-full h-full object-contain p-2 max-w-none"
-                style={{ width: containerRef.current?.clientWidth || "100%" }}
+                style={{ width: containerWidth ? `${containerWidth}px` : "100%" }}
               />
               <div className="absolute top-3 left-3 bg-[#1951fc]/85 border border-[#3781fc]/40 text-white text-[10px] font-semibold tracking-wider uppercase px-2.5 py-1 rounded-lg backdrop-blur-md shadow-xs">
                 {sourceLabel}
