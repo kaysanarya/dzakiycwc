@@ -1,0 +1,101 @@
+{
+  "timestamp": "2026-10-03T11:41:46.333Z",
+  "totalScreenshots": 15,
+  "noHorizontalScroll": true,
+  "scrollAudit": {
+    "desktop__empty": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerWidth": 1440,
+      "hasHorizontalScroll": false
+    },
+    "desktop__uploaded": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerWidth": 1440,
+      "hasHorizontalScroll": false
+    },
+    "desktop__generating": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerWidth": 1440,
+      "hasHorizontalScroll": false
+    },
+    "desktop__success": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerWidth": 1440,
+      "hasHorizontalScroll": false
+    },
+    "desktop__failed": {
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerWidth": 1440,
+      "hasHorizontalScroll": false
+    },
+    "tablet__empty": {
+      "scrollWidth": 820,
+      "clientWidth": 820,
+      "innerWidth": 820,
+      "hasHorizontalScroll": false
+    },
+    "tablet__uploaded": {
+      "scrollWidth": 820,
+      "clientWidth": 820,
+      "innerWidth": 820,
+      "hasHorizontalScroll": false
+    },
+    "tablet__generating": {
+      "scrollWidth": 820,
+      "clientWidth": 820,
+      "innerWidth": 820,
+      "hasHorizontalScroll": false
+    },
+    "tablet__success": {
+      "scrollWidth": 820,
+      "clientWidth": 820,
+      "innerWidth": 820,
+      "hasHorizontalScroll": false
+    },
+    "tablet__failed": {
+      "scrollWidth": 820,
+      "clientWidth": 820,
+      "innerWidth": 820,
+      "hasHorizontalScroll": false
+    },
+    "mobile__empty": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerWidth": 390,
+      "hasHorizontalScroll": false
+    },
+    "mobile__uploaded": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerWidth": 390,
+      "hasHorizontalScroll": false
+    },
+    "mobile__generating": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerWidth": 390,
+      "hasHorizontalScroll": false
+    },
+    "mobile__success": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerWidth": 390,
+      "hasHorizontalScroll": false
+    },
+    "mobile__failed": {
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerWidth": 390,
+      "hasHorizontalScroll": false
+    }
+  },
+  "axeAudit": {
+    "passesWcagAA": true,
+    "violations": []
+  }
+}

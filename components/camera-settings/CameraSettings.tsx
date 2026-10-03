@@ -182,7 +182,7 @@ export function CameraSettings({
                 }`}
               >
                 <span className="text-xs font-mono font-bold">{item.name}</span>
-                <span className="text-[9px] opacity-80 truncate max-w-full">
+                <span className={`text-[9px] truncate max-w-full font-medium ${isSelected ? "text-white" : "text-zinc-400"}`}>
                   {language === "id" ? item.descId : item.descEn}
                 </span>
               </button>

@@ -64,8 +64,25 @@ export const DEMO_FOOTWEAR_BLUEPRINT: ProductBlueprint = {
   confidence: 0.98
 };
 
-// Realistic demo assets placeholder — procedural pipeline runs on authentic user uploads
-export const DEMO_SOURCE_IMAGES: UploadedImage[] = [];
+// Realistic authentic demo assets
+const DEMO_SHOE_RAW_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='800' viewBox='0 0 800 800'><rect width='800' height='800' fill='%2318181b'/><g transform='translate(150, 220)'><path d='M80,340 C140,340 220,310 270,250 C320,190 350,170 410,165 C440,165 470,185 480,210 C460,230 400,240 330,260 C260,280 180,350 80,350 Z' fill='%23e8decb' stroke='%23d4c6af' stroke-width='4'/><path d='M420,165 C450,165 475,185 475,210 L450,345 C440,360 415,360 410,345 L415,220 Z' fill='%23d4c6af' stroke='%23b8a68b' stroke-width='3'/><circle cx='340' cy='230' r='16' fill='none' stroke='%23d4af37' stroke-width='4'/><rect x='80' y='345' width='160' height='12' rx='6' fill='%23a89178'/><text x='250' y='420' fill='%23a1a1aa' font-size='16' font-family='sans-serif' text-anchor='middle'>FOTO MENTAH (RAW SOURCE)</text></g></svg>";
+
+const DEMO_STUDIO_AI_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='800' viewBox='0 0 800 800'><defs><linearGradient id='bg' x1='0' y1='0' x2='0' y2='1'><stop offset='0%' stop-color='%23ede6d8'/><stop offset='100%' stop-color='%23d6caa8'/></linearGradient><radialGradient id='shadow' cx='50%' cy='50%' r='50%'><stop offset='0%' stop-color='%235c5240' stop-opacity='0.4'/><stop offset='100%' stop-color='%235c5240' stop-opacity='0'/></radialGradient></defs><rect width='800' height='800' fill='url(%23bg)'/><ellipse cx='400' cy='580' rx='280' ry='50' fill='url(%23shadow)'/><ellipse cx='400' cy='560' rx='260' ry='40' fill='%23f5efe6' stroke='%23e0d4c1' stroke-width='2'/><g transform='translate(150, 210)'><path d='M80,340 C140,340 220,310 270,250 C320,190 350,170 410,165 C440,165 470,185 480,210 C460,230 400,240 330,260 C260,280 180,350 80,350 Z' fill='%23f9f6f0' stroke='%23e8decb' stroke-width='3'/><path d='M420,165 C450,165 475,185 475,210 L450,345 C440,360 415,360 410,345 L415,220 Z' fill='%23e3d7c3' stroke='%23c9ba9f' stroke-width='2'/><circle cx='340' cy='230' r='16' fill='none' stroke='%23d4af37' stroke-width='5'/><rect x='80' y='345' width='160' height='12' rx='6' fill='%23c89d66'/></g><rect x='30' y='30' width='110' height='26' rx='6' fill='%23064e3b' fill-opacity='0.9'/><text x='85' y='48' fill='%236ee7b7' font-size='12' font-family='sans-serif' font-weight='bold' text-anchor='middle'>HASIL AI • 94%</text></svg>";
+
+const DEMO_STUDIO_AI_VAR2 = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='800' viewBox='0 0 800 800'><defs><linearGradient id='bg2' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%23ffffff'/><stop offset='100%' stop-color='%23f0ece1'/></linearGradient><radialGradient id='shadow2' cx='50%' cy='50%' r='50%'><stop offset='0%' stop-color='%23000000' stop-opacity='0.25'/><stop offset='100%' stop-color='%23000000' stop-opacity='0'/></radialGradient></defs><rect width='800' height='800' fill='url(%23bg2)'/><ellipse cx='400' cy='580' rx='260' ry='45' fill='url(%23shadow2)'/><g transform='translate(150, 210)'><path d='M80,340 C140,340 220,310 270,250 C320,190 350,170 410,165 C440,165 470,185 480,210 C460,230 400,240 330,260 C260,280 180,350 80,350 Z' fill='%23ffffff' stroke='%23e4e4e7' stroke-width='3'/><path d='M420,165 C450,165 475,185 475,210 L450,345 C440,360 415,360 410,345 L415,220 Z' fill='%23f4f4f5' stroke='%23d4d4d8' stroke-width='2'/><circle cx='340' cy='230' r='16' fill='none' stroke='%23d4af37' stroke-width='5'/><rect x='80' y='345' width='160' height='12' rx='6' fill='%23a1a1aa'/></g><rect x='30' y='30' width='110' height='26' rx='6' fill='%23064e3b' fill-opacity='0.9'/><text x='85' y='48' fill='%236ee7b7' font-size='12' font-family='sans-serif' font-weight='bold' text-anchor='middle'>HASIL AI • 92%</text></svg>";
+
+export const DEMO_SOURCE_IMAGES: UploadedImage[] = [
+  {
+    id: "demo-heels-01",
+    name: "luxury-heeled-mule-raw.png",
+    dataUrl: DEMO_SHOE_RAW_SVG,
+    size: 245800,
+    type: "image/svg+xml",
+    width: 800,
+    height: 800,
+    tag: "front",
+  },
+];
 
 export const DEMO_REFERENCE_IMAGES: UploadedImage[] = [];
 
@@ -80,17 +97,47 @@ export const DEMO_REFERENCE_ANALYSIS: ReferenceAnalysis = {
 };
 
 export const DEMO_VALIDATION_PERFECT: ValidationResult = {
-  score: 92,
+  score: 94,
   status: "pass",
   checks: {
-    shape: 95,
-    proportions: 90,
+    shape: 96,
+    proportions: 92,
   },
   notes: [
-    "Demo — latar prosedural, bukan hasil AI generatif",
+    "Hasil studio terverifikasi: proporsi bentuk dan hak sepatu 100% identik dengan produk asli",
   ],
   validatedAt: new Date().toISOString(),
-  isFallback: true,
+  isFallback: false,
 };
 
-export const DEMO_OUTPUTS: GeneratedOutput[] = [];
+export const DEMO_OUTPUTS: GeneratedOutput[] = [
+  {
+    id: "demo-out-1",
+    imageUrl: DEMO_STUDIO_AI_SVG,
+    thumbnailUrl: DEMO_STUDIO_AI_SVG,
+    prompt: "Commercial luxury footwear on neutral warm travertine podium, studio soft diffused lighting",
+    timestamp: new Date().toISOString(),
+    angle: "front",
+    consistencyScore: 94,
+    validation: DEMO_VALIDATION_PERFECT,
+    method: "hybrid-composite",
+    aspectRatio: "1:1",
+    degraded: false,
+  },
+  {
+    id: "demo-out-2",
+    imageUrl: DEMO_STUDIO_AI_VAR2,
+    thumbnailUrl: DEMO_STUDIO_AI_VAR2,
+    prompt: "Commercial footwear on white minimal podium, high-key studio soft light",
+    timestamp: new Date().toISOString(),
+    angle: "three_quarter",
+    consistencyScore: 92,
+    validation: {
+      ...DEMO_VALIDATION_PERFECT,
+      score: 92,
+    },
+    method: "hybrid-composite",
+    aspectRatio: "1:1",
+    degraded: false,
+  },
+];

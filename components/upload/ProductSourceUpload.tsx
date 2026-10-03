@@ -177,7 +177,7 @@ export function ProductSourceUpload({
             <span>{language === "id" ? "Pilih Foto Produk" : "Select Product Photo"}</span>
           </div>
 
-          <span className="text-[11px] text-zinc-500 mt-4">
+          <span className="text-[11px] text-zinc-400 mt-4">
             {language === "id"
               ? "Mendukung JPG, PNG, atau WEBP hingga 10MB"
               : "Supports JPG, PNG, or WEBP up to 10MB"}
@@ -277,7 +277,7 @@ export function ProductSourceUpload({
                   <p className="text-xs font-medium text-zinc-200 truncate" title={img.name}>
                     {img.name}
                   </p>
-                  <p className="text-[10px] text-zinc-500 font-mono">
+                  <p className="text-[10px] text-zinc-400 font-mono">
                     {formatSize(img.size)} {img.width && img.height ? `• ${img.width}×${img.height}` : ""}
                   </p>
                 </div>

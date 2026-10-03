@@ -159,6 +159,54 @@ export default function Home() {
   const [demoRemaining, setDemoRemaining] = useState<number | null>(null);
   const [quotaExceededNotice, setQuotaExceededNotice] = useState<boolean>(false);
 
+  // Automated Test State Hook (deterministic verification of 5 required states)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const testState = params.get("testState");
+    if (!testState) return;
+
+    if (testState === "empty") {
+      setSourceImages([]);
+      setGeneratedOutputs([]);
+      setIsGenerating(false);
+      setHasStarted(false);
+      setErrorMessage(null);
+    } else if (testState === "uploaded") {
+      setSourceImages(DEMO_SOURCE_IMAGES);
+      setGeneratedOutputs([]);
+      setIsGenerating(false);
+      setHasStarted(false);
+      setErrorMessage(null);
+    } else if (testState === "generating") {
+      setSourceImages(DEMO_SOURCE_IMAGES);
+      setGeneratedOutputs([]);
+      setIsGenerating(true);
+      setHasStarted(true);
+      setErrorMessage(null);
+      setPipelineSteps([
+        { id: 1, key: "analyze", title: "Analisis foto", description: "Mengenali bentuk dan detail fisik produk", status: "completed", details: "Karakteristik geometri sepatu teridentifikasi" },
+        { id: 2, key: "cutout", title: "Potong produk", description: "Memisahkan produk asli dari latar foto", status: "running" },
+        { id: 3, key: "background", title: "Buat latar", description: "Membuat latar studio dan tata cahaya", status: "pending" },
+        { id: 4, key: "composite", title: "Tempel dan cek hasil", description: "Menempel produk asli, bayangan alami, dan verifikasi", status: "pending" },
+      ]);
+      setCurrentLogMessage("Memotong produk asli dari latar foto...");
+    } else if (testState === "success") {
+      handleLoadDemoProduct();
+    } else if (testState === "failed") {
+      setSourceImages(DEMO_SOURCE_IMAGES);
+      setIsGenerating(false);
+      setHasStarted(true);
+      setErrorMessage("Segmentasi gagal: Latar foto terlalu rumit. Silakan unggah foto produk dengan latar polos.");
+      setPipelineSteps([
+        { id: 1, key: "analyze", title: "Analisis foto", description: "Mengenali bentuk dan detail fisik produk", status: "completed" },
+        { id: 2, key: "cutout", title: "Potong produk", description: "Memisahkan produk asli dari latar foto", status: "failed", error: "Latar foto terlalu rumit" },
+        { id: 3, key: "background", title: "Buat latar", description: "Membuat latar studio dan tata cahaya", status: "pending" },
+        { id: 4, key: "composite", title: "Tempel dan cek hasil", description: "Menempel produk asli, bayangan alami, dan verifikasi", status: "pending" },
+      ]);
+    }
+  }, []);
+
   useEffect(() => {
     fetch("/api/status")
       .then((res) => {
@@ -1126,10 +1174,10 @@ export default function Home() {
               {/* History list */}
               <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
                 {historyItems.length === 0 ? (
-                  <div className="h-48 flex flex-col items-center justify-center text-center p-4 text-zinc-500">
+                  <div className="h-48 flex flex-col items-center justify-center text-center p-4 text-zinc-400">
                     <Clock className="w-6 h-6 mb-2 stroke-[1.5]" />
-                    <p className="text-xs font-medium text-zinc-400">{t.history.noHistory}</p>
-                    <p className="text-[10px] text-zinc-500 mt-0.5">{t.history.noHistoryDesc}</p>
+                    <p className="text-xs font-medium text-zinc-300">{t.history.noHistory}</p>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">{t.history.noHistoryDesc}</p>
                   </div>
                 ) : (
                   historyItems.map((item) => (
@@ -1141,7 +1189,7 @@ export default function Home() {
                         <span className="text-[11px] font-semibold text-zinc-300 truncate max-w-[120px]">
                           {item.projectName}
                         </span>
-                        <span className="text-[9px] font-mono text-zinc-500">
+                        <span className="text-[9px] font-mono text-zinc-400">
                           {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
