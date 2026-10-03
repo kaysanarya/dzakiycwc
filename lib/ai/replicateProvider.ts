@@ -12,7 +12,8 @@ import {
   ValidationResult,
   CameraAngle,
 } from "@/types";
-import { buildStructuredPrompt } from "@/lib/prompts/buildPrompt";
+import { buildStructuredPrompt, buildBackgroundPlatePrompt } from "@/lib/prompts/buildPrompt";
+import { compositeProductOnPlate } from "./studioCompositor";
 import { generateInpaintingMask, prepareImageBuffer, toSafeDataUri } from "./removeBackground";
 import { AiPipelineError } from "./AiPipelineError";
 import { DemoAIProvider } from "./demoProvider";
@@ -69,15 +70,85 @@ export class ReplicateAIProvider implements AIProvider {
       let usedMethod = "unknown";
       let isDegraded = false;
 
-      // 1. Try SDXL Inpainting with binary mask
-      if (input.sourceImages && input.sourceImages.length > 0) {
+      // Mode A: Standard Commercial Studio (Plate + Composite via Flux Schnell)
+      const isHumanModel = direction.modelSetting === "human_model" || direction.modelSetting === "partial_hands";
+
+      if (!isHumanModel) {
+        const { platePrompt } = buildBackgroundPlatePrompt({
+          direction,
+          referenceAnalysis,
+          variationIndex: index,
+        });
+
+        const aspect = direction.aspectRatio === "9:16" ? "9:16" : direction.aspectRatio === "16:9" ? "16:9" : "1:1";
+
+        const res = await fetch("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+            Prefer: "wait",
+          },
+          signal: signal ?? AbortSignal.timeout(90_000),
+          body: JSON.stringify({
+            input: {
+              prompt: platePrompt,
+              aspect_ratio: aspect,
+              output_format: "webp",
+              output_quality: 90,
+            },
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          let plateUrl: string | undefined;
+          if (Array.isArray(data.output) && data.output.length > 0) {
+            plateUrl = data.output[0];
+          } else if (typeof data.output === "string") {
+            plateUrl = data.output;
+          } else if (data.urls?.get) {
+            plateUrl = await this.pollPrediction(data.urls.get, signal);
+          }
+
+          if (plateUrl) {
+            const plateFetch = await fetch(plateUrl);
+            if (plateFetch.ok) {
+              const plateBuffer = Buffer.from(await plateFetch.arrayBuffer());
+              let finalImg = plateUrl;
+
+              if (input.sourceImages && input.sourceImages.length > 0) {
+                const rawSource = input.sourceImages[0].dataUrl;
+                const b64Data = rawSource.includes(",") ? rawSource.split(",")[1] : rawSource;
+                const productCutoutBuffer = Buffer.from(b64Data, "base64");
+
+                const compositeBuffer = await compositeProductOnPlate({
+                  plateBuffer,
+                  productCutoutBuffer,
+                });
+                finalImg = `data:image/jpeg;base64,${compositeBuffer.toString("base64")}`;
+              }
+
+              imageUrl = finalImg;
+              usedMethod = "replicate-plate-composite";
+              isDegraded = false;
+            }
+          }
+        } else {
+          const errText = await res.text().catch(() => "");
+          const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
+          console.error(`[replicate] Flux plate HTTP ${res.status}: ${sanitized}`);
+        }
+      }
+
+      // Mode B: Experimental human model / partial hands (SDXL inpainting)
+      if (!imageUrl && input.sourceImages && input.sourceImages.length > 0) {
         try {
           const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
             ? input.sourceImages[0].dataUrl.split(",")[1]
             : input.sourceImages[0].dataUrl;
           const rawBuf = Buffer.from(rawBase64, "base64");
 
-          // forcePng → resize if needed → generate mask from SAME final buffer
           const { imageBuffer, width, height } = await prepareImageBuffer(rawBuf);
           const maskBuf = await generateInpaintingMask(imageBuffer, width, height);
           const imageDataUri = toSafeDataUri(imageBuffer);
@@ -116,61 +187,13 @@ export class ReplicateAIProvider implements AIProvider {
             }
             if (imageUrl) {
               usedMethod = "replicate-sdxl-inpaint";
-              isDegraded = false;
+              isDegraded = true; // Experimental mode
             }
-          } else {
-            const errText = await imgRes.text().catch(() => "");
-            const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
-            console.error(`[replicate] SDXL inpaint HTTP ${imgRes.status}: ${sanitized}`);
           }
         } catch (sdxlErr) {
-          if (sdxlErr instanceof AiPipelineError) throw sdxlErr; // mask/bg errors propagate
+          if (sdxlErr instanceof AiPipelineError) throw sdxlErr;
           const msg = sanitizeErrorMessage(sdxlErr, [this.apiKey]).slice(0, 300);
           console.error(`[replicate] SDXL exception: ${msg}`);
-        }
-      }
-
-      // 2. Fallback to Flux Schnell text-to-image
-      if (!imageUrl) {
-        const res = await fetch("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            "Content-Type": "application/json",
-            Prefer: "wait",
-          },
-          signal: signal ?? AbortSignal.timeout(90_000),
-          body: JSON.stringify({
-            input: {
-              prompt: generationPrompt,
-              aspect_ratio: direction.aspectRatio === "9:16" ? "9:16" : direction.aspectRatio === "16:9" ? "16:9" : "1:1",
-              output_format: "webp",
-              output_quality: 90,
-            },
-          }),
-        });
-
-        if (!res.ok) {
-          const errText = await res.text().catch(() => "");
-          const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
-          throw new AiPipelineError(
-            `Replicate Flux Schnell failed: ${sanitized}`,
-            "provider",
-            { provider: "replicate", status: res.status }
-          );
-        }
-
-        const data = await res.json();
-        if (Array.isArray(data.output) && data.output.length > 0) {
-          imageUrl = data.output[0];
-        } else if (typeof data.output === "string") {
-          imageUrl = data.output;
-        } else if (data.urls?.get) {
-          imageUrl = await this.pollPrediction(data.urls.get, signal);
-        }
-        if (imageUrl) {
-          usedMethod = "replicate-flux";
-          isDegraded = true;
         }
       }
 

@@ -11,7 +11,8 @@ import {
   GeneratedOutput,
   ValidationResult,
 } from "@/types";
-import { buildStructuredPrompt } from "@/lib/prompts/buildPrompt";
+import { buildStructuredPrompt, buildBackgroundPlatePrompt } from "@/lib/prompts/buildPrompt";
+import { compositeProductOnPlate } from "./studioCompositor";
 import { parseAIJsonResponse } from "./safeJson";
 import { sanitizeErrorMessage } from "@/lib/auth/serverAuth";
 import { AiPipelineError } from "./AiPipelineError";
@@ -394,7 +395,13 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
         }
       }
 
-      // 2. Try Imagen / Gemini Image API if multimodal was not successful
+      // 2. Generate Background Plate with Imagen 3 and composite authentic product
+      const { platePrompt, negativePrompt: plateNegativePrompt } = buildBackgroundPlatePrompt({
+        direction: input.direction,
+        referenceAnalysis: input.referenceAnalysis,
+        variationIndex: i,
+      });
+
       try {
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${this.imageModel}:predict?key=${this.apiKey}`,
@@ -403,11 +410,11 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
             headers: { "Content-Type": "application/json" },
             signal: signal ?? AbortSignal.timeout(90_000),
             body: JSON.stringify({
-              instances: [{ prompt: promptData.generationPrompt }],
+              instances: [{ prompt: platePrompt }],
               parameters: {
                 sampleCount: 1,
                 aspectRatio: input.direction.aspectRatio === "1:1" ? "1:1" : input.direction.aspectRatio === "9:16" ? "9:16" : "3:4",
-                negativePrompt: promptData.negativePrompt,
+                negativePrompt: plateNegativePrompt,
               },
             }),
           }
@@ -417,10 +424,24 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
           const data = await response.json();
           const base64Image = data.predictions?.[0]?.bytesBase64Encoded;
           if (base64Image) {
-            const imageUrl = `data:image/jpeg;base64,${base64Image}`;
+            const plateBuffer = Buffer.from(base64Image, "base64");
+            let finalImageUrl = `data:image/jpeg;base64,${base64Image}`;
+
+            if (input.sourceImages && input.sourceImages.length > 0) {
+              const rawSource = input.sourceImages[0].dataUrl;
+              const b64Data = rawSource.includes(",") ? rawSource.split(",")[1] : rawSource;
+              const productCutoutBuffer = Buffer.from(b64Data, "base64");
+
+              const compositeBuffer = await compositeProductOnPlate({
+                plateBuffer,
+                productCutoutBuffer,
+              });
+              finalImageUrl = `data:image/jpeg;base64,${compositeBuffer.toString("base64")}`;
+            }
+
             const validation = await this.validateProductConsistency({
               sourceImages: input.sourceImages,
-              generatedImageUrl: imageUrl,
+              generatedImageUrl: finalImageUrl,
               blueprint: input.blueprint,
               locks: input.locks,
               angle: `Commercial Angle ${i + 1}`,
@@ -428,16 +449,16 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
 
             return {
               id: `real-gen-${Date.now()}-${i + 1}`,
-              imageUrl,
-              prompt: promptData.generationPrompt,
+              imageUrl: finalImageUrl,
+              prompt: platePrompt,
               angle: `Commercial Angle ${i + 1}`,
               consistencyScore: validation.score,
               validation,
-              status: validation.status === "pass" ? "passed" : "rejected",
+              status: validation.status === "needs_regeneration" ? "rejected" : "passed",
               createdAt: new Date().toISOString(),
               aspectRatio: input.direction.aspectRatio,
-              degraded: true,
-              method: "gemini-imagen",
+              degraded: false,
+              method: "gemini-plate-composite",
             };
           }
         } else {

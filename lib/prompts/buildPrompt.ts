@@ -239,3 +239,61 @@ ${ignoreReferenceDesign}`;
     },
   };
 }
+
+export interface PlatePromptOutput {
+  platePrompt: string;
+  negativePrompt: string;
+  aspectRatio: string;
+}
+
+/**
+ * Builds an authoritative text-to-image prompt for the "Plate + Composite" pipeline.
+ *
+ * Rules:
+ * 1. Generates ONLY an empty background studio plate (no product, no objects).
+ * 2. Prompt MUST contain: "empty studio scene, no product, no objects on the surface, clear flat surface in the lower center".
+ * 3. Never sends "product lock", category names, or product specifications.
+ */
+export function buildBackgroundPlatePrompt(params: {
+  direction: PhotographyDirection;
+  referenceAnalysis?: ReferenceAnalysis;
+  variationIndex?: number;
+}): PlatePromptOutput {
+  const { direction, referenceAnalysis, variationIndex = 0 } = params;
+
+  let bgSetting = "warm neutral luxury beige commercial studio podium, subtle soft diffuse gradient";
+  if (direction.background === "studio_beige") {
+    bgSetting = "warm luxury neutral beige matte commercial studio podium, soft diffuse ambient gradient, architectural podium surface";
+  } else if (direction.background === "studio_white") {
+    bgSetting = "pure seamless high-key commercial white studio cyclorama with gentle soft ground lighting gradient";
+  } else if (direction.background === "lifestyle") {
+    bgSetting = "luxurious architectural limestone interior podium with soft morning daylight, subtle minimalist background depth of field";
+  } else if (direction.background === "gradient") {
+    bgSetting = "subtle warm amber-to-slate smooth studio backdrop gradient on a polished podium surface";
+  } else if (direction.background === "transparent") {
+    bgSetting = "clean neutral commercial studio surface with subtle soft ground gradient";
+  } else if (direction.background === "exact_reference" && referenceAnalysis) {
+    bgSetting = `commercial photography set: ${referenceAnalysis.backgroundStyle}, ${referenceAnalysis.lightingDirection}, ${referenceAnalysis.shadowType}`;
+  } else if (direction.background === "custom" && direction.customBackground) {
+    bgSetting = direction.customBackground;
+  }
+
+  const angles = [
+    "front eye-level commercial studio perspective",
+    "three-quarter angle studio perspective",
+    "low-angle architectural studio elevation",
+    "top-down 45-degree elevated studio perspective",
+  ];
+  const angleText = angles[variationIndex % angles.length];
+
+  // Mandatory requirement: "empty studio scene, no product, no objects on the surface, clear flat surface in the lower center"
+  const platePrompt = `empty studio scene, no product, no objects on the surface, clear flat surface in the lower center. Professional commercial studio photography environment, ${bgSetting}, ${angleText}, Hasselblad medium format optical sharpness, photorealistic global illumination, cinematic softbox lighting, pristine clean empty stage ready for product staging.`;
+
+  const negativePrompt = `product, shoes, footwear, sneakers, heels, boots, bag, handbag, clothing, apparel, person, people, human, model, man, woman, feet, hands, objects on table, clutter, text, watermark, logo, deformed, blurry, noisy`;
+
+  return {
+    platePrompt,
+    negativePrompt,
+    aspectRatio: direction.aspectRatio || "1:1",
+  };
+}

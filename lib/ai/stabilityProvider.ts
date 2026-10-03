@@ -12,8 +12,9 @@ import {
   ValidationResult,
   CameraAngle,
 } from "@/types";
-import { buildStructuredPrompt } from "@/lib/prompts/buildPrompt";
-import { generateInpaintingMask, prepareImageBuffer } from "./removeBackground";
+import { buildStructuredPrompt, buildBackgroundPlatePrompt } from "@/lib/prompts/buildPrompt";
+import { compositeProductOnPlate } from "./studioCompositor";
+import { prepareImageBuffer } from "./removeBackground";
 import { AiPipelineError } from "./AiPipelineError";
 import { DemoAIProvider } from "./demoProvider";
 import { sanitizeErrorMessage } from "@/lib/auth/serverAuth";
@@ -75,58 +76,61 @@ export class StabilityAIProvider implements AIProvider {
       let usedMethod = "unknown";
       let isDegraded = false;
 
-      // 1. Try True Inpainting (Background Replacement around transparent product)
-      if (input.sourceImages && input.sourceImages.length > 0) {
-        try {
-          const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
-            ? input.sourceImages[0].dataUrl.split(",")[1]
-            : input.sourceImages[0].dataUrl;
-          const rawBuf = Buffer.from(rawBase64, "base64");
+      // Mode A: Standard Commercial Studio (Plate + Composite)
+      const isHumanModel = direction.modelSetting === "human_model" || direction.modelSetting === "partial_hands";
 
-          // Step: forcePng → resize if needed → THEN generate mask from final image
-          const { imageBuffer, width, height } = await prepareImageBuffer(rawBuf);
-          // Mask generated from the SAME (possibly resized) buffer so dimensions always match
-          const maskBuffer = await generateInpaintingMask(imageBuffer, width, height);
+      if (!isHumanModel) {
+        // Step 1: Generate empty studio plate with Stability Core
+        const { platePrompt, negativePrompt: plateNegativePrompt } = buildBackgroundPlatePrompt({
+          direction,
+          referenceAnalysis,
+          variationIndex: index,
+        });
 
-          const inpaintFormData = new FormData();
-          inpaintFormData.append("prompt", generationPrompt.slice(0, 1000));
-          inpaintFormData.append("negative_prompt", negativePrompt.slice(0, 500));
-          // Always send image/png regardless of original upload MIME type
-          inpaintFormData.append("image", new Blob([new Uint8Array(imageBuffer)], { type: "image/png" }), "product.png");
-          inpaintFormData.append("mask", new Blob([new Uint8Array(maskBuffer)], { type: "image/png" }), "mask.png");
-          inpaintFormData.append("output_format", "png");
+        const formData = new FormData();
+        formData.append("prompt", platePrompt.slice(0, 1000));
+        formData.append("negative_prompt", plateNegativePrompt.slice(0, 500));
+        formData.append("aspect_ratio", targetRatio);
+        formData.append("output_format", "png");
 
-          const inpaintRes = await fetch("https://api.stability.ai/v2beta/stable-image/edit/inpaint", {
-            method: "POST",
-            headers: {
-              authorization: `Bearer ${this.apiKey}`,
-              accept: "application/json",
-            },
-            signal: signal ?? AbortSignal.timeout(90_000),
-            body: inpaintFormData,
-          });
+        const res = await fetch("https://api.stability.ai/v2beta/stable-image/generate/core", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${this.apiKey}`,
+            accept: "application/json",
+          },
+          signal: signal ?? AbortSignal.timeout(90_000),
+          body: formData,
+        });
 
-          if (inpaintRes.ok) {
-            const inpaintData = await inpaintRes.json();
-            base64Image = inpaintData.image;
-            usedMethod = "stability-inpaint";
-            isDegraded = false;
-          } else {
-            const errText = await inpaintRes.text().catch(() => "");
-            const sanitized = sanitizeErrorMessage(
-              new Error(errText),
-              [this.apiKey]
-            ).slice(0, 300);
-            console.error(`[stability] Inpaint HTTP ${inpaintRes.status}: ${sanitized}`);
+        if (res.ok) {
+          const data = await res.json();
+          const plateBuf = Buffer.from(data.image, "base64");
+          let finalImg = `data:image/png;base64,${data.image}`;
+
+          if (input.sourceImages && input.sourceImages.length > 0) {
+            const rawSource = input.sourceImages[0].dataUrl;
+            const b64Data = rawSource.includes(",") ? rawSource.split(",")[1] : rawSource;
+            const productCutoutBuffer = Buffer.from(b64Data, "base64");
+
+            const compositeBuffer = await compositeProductOnPlate({
+              plateBuffer: plateBuf,
+              productCutoutBuffer,
+            });
+            finalImg = `data:image/jpeg;base64,${compositeBuffer.toString("base64")}`;
           }
-        } catch (inpaintErr) {
-          if (inpaintErr instanceof AiPipelineError) throw inpaintErr; // mask/bg errors propagate
-          const msg = sanitizeErrorMessage(inpaintErr, [this.apiKey]).slice(0, 300);
-          console.error(`[stability] Inpaint exception: ${msg}`);
+
+          base64Image = finalImg;
+          usedMethod = "stability-plate-composite";
+          isDegraded = false;
+        } else {
+          const errText = await res.text().catch(() => "");
+          const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
+          console.error(`[stability] Plate HTTP ${res.status}: ${sanitized}`);
         }
       }
 
-      // 2. Try SD3 Image-to-Image with diffusion denoising strength (0.65 - 0.80)
+      // Mode B: Experimental human model / partial hands (Image-conditioned SD3.5 / Inpaint)
       if (!base64Image && input.sourceImages && input.sourceImages.length > 0) {
         try {
           const rawBase64 = input.sourceImages[0].dataUrl.includes(",")
@@ -140,7 +144,6 @@ export class StabilityAIProvider implements AIProvider {
           sd3FormData.append("negative_prompt", negativePrompt.slice(0, 500));
           sd3FormData.append("image", blob, "source.png");
           sd3FormData.append("mode", "image-to-image");
-          // Scaled diffusion denoising strength (0.65 - 0.80)
           sd3FormData.append("strength", String(diffusionParams.denoisingStrength));
           sd3FormData.append("aspect_ratio", targetRatio);
           sd3FormData.append("model", "sd3.5-large");
@@ -158,53 +161,14 @@ export class StabilityAIProvider implements AIProvider {
 
           if (sd3Res.ok) {
             const sd3Data = await sd3Res.json();
-            base64Image = sd3Data.image;
+            base64Image = `data:image/png;base64,${sd3Data.image}`;
             usedMethod = "stability-sd3-img2img";
-            isDegraded = false;
-          } else {
-            const errText = await sd3Res.text().catch(() => "");
-            const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
-            console.error(`[stability] SD3 img2img HTTP ${sd3Res.status}: ${sanitized}`);
+            isDegraded = true; // Experimental mode: product not guaranteed identical
           }
         } catch (sd3Err) {
-          if (sd3Err instanceof AiPipelineError) throw sd3Err;
           const msg = sanitizeErrorMessage(sd3Err, [this.apiKey]).slice(0, 300);
           console.error(`[stability] SD3 exception: ${msg}`);
         }
-      }
-
-      // 3. Fallback to Stable Image Core if img2img was not applicable or failed
-      if (!base64Image) {
-        const formData = new FormData();
-        formData.append("prompt", generationPrompt.slice(0, 1000));
-        formData.append("negative_prompt", negativePrompt.slice(0, 500));
-        formData.append("aspect_ratio", targetRatio);
-        formData.append("output_format", "png");
-
-        const res = await fetch("https://api.stability.ai/v2beta/stable-image/generate/core", {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${this.apiKey}`,
-            accept: "application/json",
-          },
-          signal: signal ?? AbortSignal.timeout(90_000),
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const errText = await res.text().catch(() => "");
-          const sanitized = sanitizeErrorMessage(new Error(errText), [this.apiKey]).slice(0, 300);
-          throw new AiPipelineError(
-            `Stability Core failed: ${sanitized}`,
-            "provider",
-            { provider: "stability", status: res.status }
-          );
-        }
-
-        const data = await res.json();
-        base64Image = data.image;
-        usedMethod = "stability-core";
-        isDegraded = true;
       }
 
       if (!base64Image) {
