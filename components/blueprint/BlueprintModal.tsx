@@ -26,43 +26,43 @@ export function BlueprintModal({ blueprint, isOpen, onClose }: BlueprintModalPro
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#00030a]/60 backdrop-blur-md flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="liquid-glass-card border border-[#3781fc]/40 rounded-3xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+        className="card-flat w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="px-6 py-4.5 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.03] backdrop-blur-md">
+        <div className="px-5 py-3.5 border-b border-zinc-800 flex items-center justify-between bg-zinc-950">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-xs">
+            <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-300">
               <Layers className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wide">
+                <h3 className="text-sm font-semibold text-zinc-100">
                   {t.blueprintModal.title}
                 </h3>
-                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/15 px-2.5 py-0.5 rounded-full border border-emerald-400/30">
+                <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
                   {t.blueprintModal.confidence} {Math.round(blueprint.confidence * 100)}%
                 </span>
               </div>
-              <p className="text-xs text-white/60 font-medium">
+              <p className="text-xs text-zinc-400">
                 {t.blueprintModal.internalDesc}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center bg-white/[0.03] backdrop-blur-xs p-1 rounded-full border border-white/[0.08] text-xs shadow-2xs">
+            <div className="flex items-center bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 text-xs">
               <button
                 type="button"
                 onClick={() => setActiveTab("structured")}
-                className={`px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
                   activeTab === "structured"
-                    ? "bg-[#1951fc] text-white shadow-xs"
-                    : "text-white/80 hover:text-white"
+                    ? "bg-blue-600 text-white"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
                 {t.blueprintModal.facts}
@@ -70,10 +70,10 @@ export function BlueprintModal({ blueprint, isOpen, onClose }: BlueprintModalPro
               <button
                 type="button"
                 onClick={() => setActiveTab("json")}
-                className={`px-3 py-1 rounded-full font-bold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
                   activeTab === "json"
-                    ? "bg-[#1951fc] text-white shadow-xs"
-                    : "text-white/80 hover:text-white"
+                    ? "bg-blue-600 text-white"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
                 {t.blueprintModal.rawJson}
@@ -82,7 +82,8 @@ export function BlueprintModal({ blueprint, isOpen, onClose }: BlueprintModalPro
             <button
               type="button"
               onClick={onClose}
-              className="liquid-glass-btn p-1.5 rounded-full text-white/60 hover:text-white cursor-pointer"
+              aria-label="Tutup modal blueprint"
+              className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer transition-colors"
             >
               <X className="w-5 h-5" />
             </button>

@@ -20,37 +20,37 @@ export function ConsistencyBadge({
   const isPassing = !isUnverified && validation.score! >= threshold;
 
   return (
-    <div className="liquid-glass-subcard border border-white/[0.08] rounded-2xl p-3.5 shadow-2xs w-full min-w-0 overflow-hidden">
+    <div className="card-flat-subtle p-3 w-full min-w-0 overflow-hidden">
       {/* Row 1: Header (Icon + Title on left, Score + Expand Toggle on right) */}
       <div className="flex items-center justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           {isUnverified ? (
-            <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
+            <div className="w-6 h-6 rounded bg-amber-950/80 border border-amber-800 flex items-center justify-center text-amber-400 shrink-0">
               <AlertTriangle className="w-3.5 h-3.5" />
             </div>
           ) : isPassing ? (
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shrink-0">
+            <div className="w-6 h-6 rounded bg-emerald-950/80 border border-emerald-800 flex items-center justify-center text-emerald-400 shrink-0">
               <ShieldCheck className="w-3.5 h-3.5" />
             </div>
           ) : (
-            <div className="w-7 h-7 rounded-lg bg-rose-500/15 border border-rose-400/40 flex items-center justify-center text-rose-400 shrink-0">
+            <div className="w-6 h-6 rounded bg-rose-950/80 border border-rose-800 flex items-center justify-center text-rose-400 shrink-0">
               <AlertTriangle className="w-3.5 h-3.5" />
             </div>
           )}
-          <span className="text-xs font-bold text-white uppercase tracking-wider truncate">
+          <span className="text-xs font-semibold text-zinc-200 uppercase tracking-wider truncate">
             {language === "id" ? "Konsistensi Produk" : "Product Consistency"}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-base font-black font-mono tracking-tight text-white">
+          <span className="text-sm font-bold font-mono text-zinc-100">
             {validation.score !== null ? `${validation.score}%` : "N/A"}
           </span>
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
             aria-label={expanded ? "Tutup rincian konsistensi" : "Buka rincian konsistensi"}
-            className="liquid-glass-btn p-1 rounded-full text-white/60 hover:text-white transition-colors cursor-pointer"
+            className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             {expanded ? (
               <ChevronUp className="w-3.5 h-3.5" />

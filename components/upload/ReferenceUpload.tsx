@@ -101,15 +101,15 @@ export function ReferenceUpload({
       </div>
 
       {/* Prominent Warning Banner */}
-      <div className="p-3.5 rounded-2xl liquid-glass-subcard border border-amber-500/30 bg-amber-500/10 flex items-start gap-2.5 text-xs text-amber-200">
+      <div className="p-3 rounded-lg border border-amber-800/60 bg-amber-950/30 flex items-start gap-2.5 text-xs text-amber-200">
         <ShieldAlert className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
         <div className="leading-relaxed">
-          <p className="font-bold text-amber-200">
+          <p className="font-semibold text-amber-200">
             {language === "id"
               ? "Referensi hanya memengaruhi arahan fotografi (lighting, angle, background)."
               : "Reference images influence photography direction only (lighting, angle, background)."}
           </p>
-          <p className="text-amber-200/80 text-[11px] mt-0.5 font-medium">
+          <p className="text-amber-200/80 text-[11px] mt-0.5 font-normal">
             {language === "id"
               ? "Identitas produk tetap mengikuti foto mentahan. AI VELLUM tidak akan pernah meminjam bentuk geometri atau komponen dari referensi ini."
               : "Product identity strictly adheres to raw product images. VELLUM AI will never borrow geometry or parts from references."}
@@ -124,9 +124,9 @@ export function ReferenceUpload({
         onDragOver={handleDrag}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all duration-300 backdrop-blur-md ${dragActive
-            ? "border-[#3781fc] bg-[#1951fc]/25 shadow-[0_0_20px_rgba(55,129,252,0.4)]"
-            : "border-white/[0.08] hover:border-[#3781fc] bg-white/[0.03] hover:bg-white/[0.03]"
+        className={`border border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors ${dragActive
+            ? "border-blue-500 bg-blue-950/30"
+            : "border-zinc-700 hover:border-zinc-500 bg-zinc-900/50 hover:bg-zinc-900"
           }`}
       >
         <input
@@ -137,9 +137,9 @@ export function ReferenceUpload({
           className="hidden"
           onChange={(e) => e.target.files && processFiles(e.target.files)}
         />
-        <div className="flex items-center justify-center gap-2 text-xs text-white">
-          <Upload className="w-3.5 h-3.5 text-[#3781fc]" />
-          <span className="font-semibold">
+        <div className="flex items-center justify-center gap-2 text-xs text-zinc-300">
+          <Upload className="w-3.5 h-3.5 text-zinc-400" />
+          <span className="font-medium">
             {language === "id"
               ? "Unggah gambar referensi untuk pencahayaan, komposisi, atau background"
               : "Upload reference images for lighting, composition, or background"}
@@ -157,9 +157,9 @@ export function ReferenceUpload({
             return (
               <div
                 key={ref.id}
-                className="liquid-glass-subcard border border-white/[0.08] rounded-2xl p-2.5 flex flex-col justify-between hover:border-[#3781fc]/60 transition-all"
+                className="card-flat-subtle rounded-lg p-2.5 flex flex-col justify-between hover:border-zinc-700 transition-colors"
               >
-                <div className="relative aspect-video w-full rounded-xl bg-white/[0.04] overflow-hidden flex items-center justify-center border border-white/[0.07]">
+                <div className="relative aspect-video w-full rounded-md bg-zinc-950 overflow-hidden flex items-center justify-center border border-zinc-800">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={ref.dataUrl}
@@ -170,27 +170,28 @@ export function ReferenceUpload({
                   <button
                     type="button"
                     onClick={() => onRemoveReference(ref.id)}
-                    className="absolute top-1.5 right-1.5 p-1 rounded-full bg-[#00030a]/80 text-white hover:text-white hover:bg-red-600 transition-colors shadow-xs cursor-pointer"
+                    aria-label={language === "id" ? "Hapus referensi" : "Remove reference"}
+                    className="absolute top-1.5 right-1.5 p-1 rounded-md bg-zinc-900/80 text-zinc-300 hover:text-white hover:bg-red-600 transition-colors cursor-pointer"
                     title={language === "id" ? "Hapus Referensi" : "Remove Reference"}
                   >
                     <X className="w-3 h-3" />
                   </button>
 
                   {isBgRemoved && (
-                    <div className="absolute top-1.5 left-1.5 bg-[#1951fc]/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-xs border border-[#cbe9fd]/30">
+                    <div className="absolute top-1.5 left-1.5 bg-blue-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
                       BG Filtered
                     </div>
                   )}
                 </div>
 
                 {/* Reference Action Buttons */}
-                <div className="mt-2.5 flex items-center gap-1.5 justify-between pt-1 border-t border-white/[0.06]">
+                <div className="mt-2 flex items-center gap-1.5 justify-between pt-1 border-t border-zinc-800">
                   <button
                     type="button"
                     onClick={() => toggleRemoveBg(ref.id)}
-                    className={`flex-1 py-1 px-2 text-[10px] font-bold rounded-lg border transition-all flex items-center justify-center gap-1 cursor-pointer ${isBgRemoved
-                        ? "bg-[#1951fc] text-white border-[#3781fc] shadow-[0_2px_8px_rgba(25,81,252,0.4)]"
-                        : "liquid-glass-btn text-white border-white/[0.08] hover:bg-white/[0.05]"
+                    className={`flex-1 py-1 px-2 text-[10px] font-medium rounded border transition-colors flex items-center justify-center gap-1 cursor-pointer ${isBgRemoved
+                        ? "bg-blue-600 text-white border-blue-500"
+                        : "btn-secondary"
                       }`}
                     title="Abaikan background referensi agar fokus pada pencahayaan produk"
                   >
@@ -201,9 +202,9 @@ export function ReferenceUpload({
                   <button
                     type="button"
                     onClick={() => toggleUseAngle(ref.id)}
-                    className={`flex-1 py-1 px-2 text-[10px] font-bold rounded-lg border transition-all flex items-center justify-center gap-1 cursor-pointer ${isUsingAngle
-                        ? "bg-gradient-to-r from-[#1951fc] to-[#3781fc] text-white border-[#3781fc] shadow-[0_2px_8px_rgba(25,81,252,0.4)]"
-                        : "liquid-glass-btn text-white border-white/[0.08] hover:bg-white/[0.05]"
+                    className={`flex-1 py-1 px-2 text-[10px] font-medium rounded border transition-colors flex items-center justify-center gap-1 cursor-pointer ${isUsingAngle
+                        ? "bg-blue-600 text-white border-blue-500"
+                        : "btn-secondary"
                       }`}
                     title="Gunakan sudut kamera dari referensi ini"
                   >

@@ -59,19 +59,19 @@ export function ProductSpec({
         </div>
       </div>
 
-      <div className="p-4 rounded-2xl liquid-glass-subcard border border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+      <div className="p-3 rounded-lg card-flat-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         {/* Read-Only Detection Chip */}
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="w-7 h-7 rounded-md bg-emerald-950/80 border border-emerald-800 flex items-center justify-center text-emerald-400 shrink-0">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 font-bold text-xs">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800 text-emerald-300 font-medium text-xs">
+              <Sparkles className="w-3 h-3 text-emerald-400" />
               <span>{language === "id" ? `Terdeteksi: ${getAutoDetectedName()}` : `Detected: ${getAutoDetectedName()}`}</span>
             </div>
-            <p className="text-[11px] text-white/60 mt-1 font-medium">
-              {language === "id" ? "Bentuk fisik dan dimensi asli langsung dikunci." : "Physical shape and contours are locked from photo."}
+            <p className="text-[11px] text-zinc-400 mt-0.5 font-normal">
+              {language === "id" ? "Bentuk fisik dan dimensi dikunci dari foto." : "Physical shape and contours locked from photo."}
             </p>
           </div>
         </div>
@@ -80,8 +80,9 @@ export function ProductSpec({
         <div className="flex items-center gap-2 self-start sm:self-center">
           <button
             type="button"
+            aria-label={language === "id" ? "Koreksi kategori produk" : "Correct product category"}
             onClick={() => setIsEditing(!isEditing)}
-            className="liquid-glass-btn px-3 py-1.5 rounded-xl text-xs font-bold text-white/90 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 hover:border-white/20 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="btn-secondary h-7 px-2.5 text-xs gap-1.5"
           >
             <span>{language === "id" ? "Koreksi" : "Correct"}</span>
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isEditing ? "rotate-180" : ""}`} />
@@ -91,8 +92,8 @@ export function ProductSpec({
 
       {/* Simple Category Dropdown when Correct is clicked */}
       {isEditing && (
-        <div className="p-3.5 rounded-2xl bg-[#0a0d18] border border-[#3781fc]/40 shadow-xl space-y-2">
-          <label className="block text-xs font-bold text-white/90">
+        <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-700 space-y-2">
+          <label className="block text-xs font-semibold text-zinc-200">
             {language === "id" ? "Pilih Kategori Sebenarnya:" : "Select Actual Category:"}
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -106,10 +107,10 @@ export function ProductSpec({
                     onChangeCategory(opt.value);
                     setIsEditing(false);
                   }}
-                  className={`p-2.5 rounded-xl text-left text-xs font-semibold border transition-all cursor-pointer flex items-center justify-between ${
+                  className={`p-2 rounded-md text-left text-xs font-medium border transition-colors cursor-pointer flex items-center justify-between ${
                     isSelected
-                      ? "bg-[#1951fc] text-white border-[#3781fc] shadow-sm"
-                      : "bg-white/[0.03] text-white/80 hover:text-white border-white/[0.08] hover:bg-white/[0.06]"
+                      ? "bg-blue-600 text-white border-blue-500"
+                      : "bg-zinc-800/80 text-zinc-300 hover:text-white border-zinc-700 hover:bg-zinc-800"
                   }`}
                 >
                   <span>{language === "id" ? opt.labelId : opt.labelEn}</span>

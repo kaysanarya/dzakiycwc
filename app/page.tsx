@@ -10,9 +10,10 @@ import { CameraSettings } from "@/components/camera-settings/CameraSettings";
 import { ProductLocks } from "@/components/product-lock/ProductLocks";
 import { AgentMonitor } from "@/components/agent-monitor/AgentMonitor";
 import { BlueprintModal } from "@/components/blueprint/BlueprintModal";
-import { ResultGallery } from "@/components/result-gallery/ResultGallery";
+import { BeforeAfterSlider } from "@/components/before-after/BeforeAfterSlider";
 import { HistoryDrawer } from "@/components/history/HistoryDrawer";
 import { ConceptArtGenerator } from "@/components/concept-art/ConceptArtGenerator";
+import { ApiSettingsModal, type ApiCredentials } from "@/components/api-settings/ApiSettingsModal";
 
 import {
   UploadedImage,
@@ -34,8 +35,23 @@ import {
   DEMO_OUTPUTS,
 } from "@/lib/ai/demoData";
 
-import { Sparkles, Play, Camera, AlertTriangle, ArrowRight, KeyRound, X } from "lucide-react";
-import { ApiSettingsModal, type ApiCredentials } from "@/components/api-settings/ApiSettingsModal";
+import {
+  Play,
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  Download,
+  RotateCcw,
+  Sparkles,
+  Layers,
+  CheckCircle2,
+  HelpCircle,
+  Info,
+  Clock,
+  KeyRound,
+  Sliders,
+} from "lucide-react";
 
 const getInitialSteps = (language: "en" | "id"): AgentStep[] => [
   {
@@ -85,7 +101,7 @@ export default function Home() {
 
   // Photography Direction
   const [direction, setDirection] = useState<PhotographyDirection>({
-    cameraAngle: "copy_reference",
+    cameraAngle: "three_quarter",
     background: "studio_beige",
     marketplacePreset: "shopee",
     aspectRatio: "1:1",
@@ -93,7 +109,7 @@ export default function Home() {
   });
 
   // Preservation Controls
-  const [preservation, setPreservation] = useState<PreservationSettings>({
+  const [preservation] = useState<PreservationSettings>({
     detailPreservation: 100,
     referenceStrength: 80,
     consistencyMode: true,
@@ -101,11 +117,17 @@ export default function Home() {
     ignoreProductDesignFromReference: true,
   });
 
-  // Blueprint Caching key (F-14)
+  // Blueprint Caching key
   const [cachedSourceKey, setCachedSourceKey] = useState<string | null>(null);
 
   // Generation Batch Count
   const [generationCount, setGenerationCount] = useState<number>(4);
+
+  // Progressive Disclosure: Accordion "Lanjutan" (closed by default)
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  // Collapsible Right Sidebar (240px)
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
 
   // Pipeline Execution State
   const [isGenerating, setIsGenerating] = useState(false);
@@ -114,6 +136,7 @@ export default function Home() {
   const [currentLogMessage, setCurrentLogMessage] = useState<string>("");
   const [blueprint, setBlueprint] = useState<ProductBlueprint | null>(null);
   const [generatedOutputs, setGeneratedOutputs] = useState<GeneratedOutput[]>([]);
+  const [selectedOutputIndex, setSelectedOutputIndex] = useState<number>(0);
 
   // Modals & Drawers
   const [isBlueprintModalOpen, setIsBlueprintModalOpen] = useState(false);
@@ -194,6 +217,7 @@ export default function Home() {
     }
     return headers;
   };
+
   const [historyItems, setHistoryItems] = useState<GenerationHistoryItem[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -206,17 +230,15 @@ export default function Home() {
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // AbortController for cancelling in-flight pipeline runs on restart/unmount (F-06)
+  // AbortController for cancelling in-flight pipeline runs on restart/unmount
   const pipelineAbortRef = useRef<AbortController | null>(null);
 
-  // Cancel any running pipeline request if component unmounts (F-06)
   useEffect(() => {
     return () => {
       pipelineAbortRef.current?.abort();
     };
   }, []);
 
-  // Sanitize history item to prevent localStorage QuotaExceededError (F-13)
   const sanitizeHistoryItemForStorage = (item: GenerationHistoryItem): GenerationHistoryItem => {
     const sanitizeImage = (img: UploadedImage): UploadedImage => ({
       id: img.id,
@@ -236,7 +258,7 @@ export default function Home() {
           ? out.imageUrl
           : out.thumbnailUrl && out.thumbnailUrl.startsWith("http")
           ? out.thumbnailUrl
-          : "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%231951fc' opacity='0.2'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff' font-size='10' font-family='sans-serif'>ARCHIVED</text></svg>",
+          : "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2327272a'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23ffffff' font-size='10' font-family='sans-serif'>ARCHIVED</text></svg>",
     });
 
     return {
@@ -268,11 +290,8 @@ export default function Home() {
         }
       }
     }
-
-    console.warn("[LocalStorage] Unable to persist history items: browser quota exhausted.");
   };
 
-  // Save history to localStorage with functional updater and quota protection (F-13)
   const saveToHistory = (item: GenerationHistoryItem) => {
     setHistoryItems((prevItems) => {
       const updated = [item, ...prevItems.slice(0, 14)];
@@ -281,13 +300,14 @@ export default function Home() {
     });
   };
 
-  // Quick Action: Load Demo Product (Section 36)
+  // Quick Action: Load Demo Product
   const handleLoadDemoProduct = () => {
     setSourceImages(DEMO_SOURCE_IMAGES);
     setReferenceImages(DEMO_REFERENCE_IMAGES);
     setCategory("footwear");
     setBlueprint(DEMO_FOOTWEAR_BLUEPRINT);
     setGeneratedOutputs(DEMO_OUTPUTS);
+    setSelectedOutputIndex(0);
     setHasStarted(true);
     setPipelineSteps(
       getInitialSteps(language).map((s) => ({
@@ -307,14 +327,13 @@ export default function Home() {
     setBlueprint(item.blueprint);
     setLocks(item.locks);
     setDirection(item.direction);
-    setPreservation(item.preservation);
     setGeneratedOutputs(item.outputs);
+    setSelectedOutputIndex(0);
     setHasStarted(true);
     setIsHistoryDrawerOpen(false);
     setCurrentLogMessage(`Loaded historical shoot: ${item.projectName}`);
   };
 
-  // Update a single pipeline step status
   const updateStepStatus = (
     id: number,
     status: AgentStep["status"],
@@ -330,10 +349,6 @@ export default function Home() {
 
   // -------------------------------------------------------------
   // MASTER PIPELINE: RUN AGENT (4 Honest Stages)
-  // 1. Analisis foto
-  // 2. Potong produk
-  // 3. Buat latar
-  // 4. Tempel dan cek hasil
   // -------------------------------------------------------------
   const handleRunAgent = async () => {
     if (isGenerating) return;
@@ -342,7 +357,6 @@ export default function Home() {
       return;
     }
 
-    // Cancel old in-flight request if user restarts or starts new run (F-06)
     pipelineAbortRef.current?.abort();
     const abortController = new AbortController();
     pipelineAbortRef.current = abortController;
@@ -355,7 +369,6 @@ export default function Home() {
     setCurrentLogMessage(language === "id" ? "Memulai proses studio fotografi produk..." : "Initializing photography studio pipeline...");
 
     try {
-      // Blueprint Caching System (Source images & category based)
       const currentSourceKey = `${category}-${sourceImages.map((img) => img.id + "_" + img.size).join("|")}`;
       const isCacheValid = Boolean(blueprint) && cachedSourceKey === currentSourceKey;
 
@@ -366,12 +379,10 @@ export default function Home() {
       let currentBlueprint: ProductBlueprint;
 
       if (isCacheValid && blueprint) {
-        // STEP 1 CACHING: Skip API analysis when raw images unchanged
         currentBlueprint = blueprint;
         updateStepStatus(1, "completed", language === "id" ? "Memakai hasil analisis dari cache" : "Loaded from Blueprint Cache");
         setCurrentLogMessage(language === "id" ? "Foto produk tidak berubah — memakai hasil analisis dari cache." : "Source unchanged — using cached Product Blueprint.");
       } else {
-        // STEP 1: Analisis foto
         updateStepStatus(1, "running", language === "id" ? `Menganalisis ${sourceImages.length} foto produk` : `Analyzing ${sourceImages.length} product photos`);
         setCurrentLogMessage(language === "id" ? `Menganalisis ${sourceImages.length} foto produk...` : `Analyzing ${sourceImages.length} product images...`);
 
@@ -403,7 +414,6 @@ export default function Home() {
         setBlueprint(currentBlueprint);
         setCachedSourceKey(currentSourceKey);
 
-        // Optional blueprint refine call
         try {
           const bpRes = await fetch("/api/blueprint", {
             method: "POST",
@@ -432,7 +442,6 @@ export default function Home() {
         updateStepStatus(1, "completed", language === "id" ? "Bentuk dan karakteristik produk teridentifikasi" : "Product geometry and features identified");
       }
 
-      // STEP 2: Potong produk & STEP 3: Buat latar
       updateStepStatus(2, "running", language === "id" ? "Memotong produk dari latar aslinya..." : "Cutting out authentic product...");
       setCurrentLogMessage(language === "id" ? "Memotong produk asli dan membuat latar foto..." : "Cutting out product and generating background...");
 
@@ -488,17 +497,11 @@ export default function Home() {
         throw new Error(errMsg);
       }
 
-      // Step 2 & 3 completed
       updateStepStatus(2, "completed", language === "id" ? "Produk asli berhasil dipotong dari foto" : "Product cutout completed from original photo");
       updateStepStatus(3, "completed", language === "id" ? "Latar foto dan pencahayaan studio dibuat" : "Studio background plate generated");
 
       const outputs = (genData.outputs ?? []) as GeneratedOutput[];
 
-      if (genData.failedCount && genData.failedCount > 0 && outputs.length > 0) {
-        console.warn(`[Pipeline] Partial generation: ${outputs.length} succeeded, ${genData.failedCount} failed.`);
-      }
-
-      // STEP 4: Tempel dan cek hasil
       updateStepStatus(4, "running", language === "id" ? "Menempel produk asli, bayangan alami, dan verifikasi kualitas" : "Compositing product, shadows, and auditing quality");
       setCurrentLogMessage(language === "id" ? "Mengecek kesesuaian hasil foto dengan produk asli..." : "Verifying output photo against original product...");
 
@@ -540,92 +543,12 @@ export default function Home() {
         })
       );
 
-      let finalOutputs = auditedOutputs;
-      let retries = 0;
-      const isPaidProvider = Boolean(apiCredentials?.apiKey);
-      const maxRetries = isPaidProvider ? 1 : 0;
-
-      while (
-        retries < maxRetries &&
-        finalOutputs.some((o) => o.status === "rejected" || o.validation.status === "needs_regeneration")
-      ) {
-        retries++;
-        setCurrentLogMessage(language === "id" ? "Validasi kualitas: membuat ulang 1x..." : "Quality validation: auto-regenerating attempt 1/1...");
-
-        const regenPromises = finalOutputs.map(async (output: GeneratedOutput): Promise<GeneratedOutput> => {
-          if (output.status !== "rejected" && output.validation.status !== "needs_regeneration") return output;
-
-          try {
-            const regenRes = await fetch("/api/generate", {
-              method: "POST",
-              headers: getAuthHeaders(),
-              signal,
-              body: JSON.stringify({
-                blueprint: currentBlueprint,
-                locks,
-                direction: { ...direction, cameraAngle: output.angle },
-                preservation,
-                sourceImages,
-                referenceImages,
-                count: 1,
-              }),
-            });
-
-            updateDemoRemaining(regenRes);
-
-            const regenData: { success?: boolean; code?: string; outputs?: GeneratedOutput[]; error?: { message?: string } | string } =
-              await regenRes.json().catch(() => ({}));
-
-            if (!regenRes.ok || regenData.success === false) {
-              if (regenRes.status === 429 || regenData.code === "DEMO_QUOTA_EXCEEDED") {
-                setQuotaExceededNotice(true);
-                setDemoRemaining(0);
-              }
-              return {
-                ...output,
-                status: "rejected" as const,
-                validation: {
-                  ...output.validation,
-                  notes: [
-                    ...(output.validation.notes || []),
-                    `Auto-regeneration attempt failed (HTTP ${regenRes.status}).`,
-                  ],
-                },
-              };
-            }
-            const newOutput = regenData.outputs?.[0];
-            if (newOutput) {
-              return newOutput;
-            }
-
-            return {
-              ...output,
-              status: "rejected" as const,
-            };
-          } catch (err: unknown) {
-            if (err instanceof Error && err.name === "AbortError") {
-              throw err;
-            }
-            return {
-              ...output,
-              status: "rejected" as const,
-              validation: {
-                ...output.validation,
-                notes: [...(output.validation.notes || []), `Auto-regeneration error: ${err instanceof Error ? err.message : "Unknown error"}`],
-              },
-            };
-          }
-        });
-
-        finalOutputs = await Promise.all(regenPromises);
-      }
-
-      setGeneratedOutputs(finalOutputs);
-      updateStepStatus(4, "completed", language === "id" ? `${finalOutputs.length} foto komersial siap digunakan` : `${finalOutputs.length} commercial photos ready`);
+      setGeneratedOutputs(auditedOutputs);
+      setSelectedOutputIndex(0);
+      updateStepStatus(4, "completed", language === "id" ? `${auditedOutputs.length} foto komersial siap digunakan` : `${auditedOutputs.length} commercial photos ready`);
       setCurrentLogMessage(language === "id" ? "Selesai! Foto produk komersial siap digunakan." : "Complete! Commercial product photos ready.");
 
-      // Save session to history
-      const scoredOutputs = finalOutputs.filter((o) => o.consistencyScore !== null);
+      const scoredOutputs = auditedOutputs.filter((o) => o.consistencyScore !== null);
       const avgScore = scoredOutputs.length > 0
         ? Math.round(scoredOutputs.reduce((acc, curr) => acc + (curr.consistencyScore ?? 0), 0) / scoredOutputs.length)
         : 0;
@@ -641,7 +564,7 @@ export default function Home() {
         locks,
         direction,
         preservation,
-        outputs: finalOutputs,
+        outputs: auditedOutputs,
         averageScore: avgScore,
         isDemo: false,
       };
@@ -655,7 +578,6 @@ export default function Home() {
       setErrorMessage(msg);
       setCurrentLogMessage(`ERROR: ${msg}`);
 
-      // Mark the active running step as failed with error message
       setPipelineSteps((prev) =>
         prev.map((step) =>
           step.status === "running" ? { ...step, status: "failed", error: msg } : step
@@ -666,63 +588,84 @@ export default function Home() {
     }
   };
 
-  // Single Angle Regeneration
-  const handleRegenerateSingle = async (outputId: string) => {
-    if (!blueprint || isGenerating) return;
-    setIsGenerating(true);
-    setCurrentLogMessage(`Regenerating angle ${outputId} with strict lock constraints...`);
-
+  const handleDownloadSingle = async (
+    url: string,
+    name: string,
+    format: "png" | "jpg" = "png"
+  ): Promise<void> => {
     try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          blueprint,
-          locks,
-          direction,
-          preservation,
-          sourceImages,
-          referenceImages,
-          count: 1,
-        }),
-      });
-
-      if (res.ok) {
-        const data: { success?: boolean; outputs?: GeneratedOutput[] } = await res.json().catch(() => ({}));
-        if (data.success !== false && data.outputs && data.outputs.length > 0) {
-          const newOutput = data.outputs[0];
-          if (newOutput) {
-            setGeneratedOutputs((prev) =>
-              prev.map((out) => (out.id === outputId ? newOutput : out))
-            );
-            setCurrentLogMessage(`Angle ${outputId} regenerated successfully.`);
-          }
-        } else {
-          const errMsg =
-            typeof (data as { error?: { message?: string } }).error === "object"
-              ? (data as { error?: { message?: string } }).error?.message
-              : "Regeneration returned no output.";
-          setCurrentLogMessage(`Failed to regenerate ${outputId}: ${errMsg || "Unknown error"}.`);
-        }
+      let blob: Blob;
+      if (url.startsWith("data:")) {
+        const response = await fetch(url);
+        blob = await response.blob();
       } else {
-        setCurrentLogMessage(`Failed to regenerate ${outputId} (HTTP ${res.status}).`);
+        const response = await fetch(url, { mode: "cors" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        blob = await response.blob();
       }
-    } catch (err) {
-      console.warn("Single regeneration warning:", err);
-      setCurrentLogMessage(`Failed to regenerate ${outputId}.`);
-    } finally {
-      setIsGenerating(false);
+
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      const cleanName = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "foto-produk";
+      a.download = `studio-${cleanName}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, "_blank");
     }
   };
 
-  // Delete an output
-  const handleDeleteSingle = (outputId: string) => {
-    setGeneratedOutputs((prev) => prev.filter((o) => o.id !== outputId));
+  const activeOutput: GeneratedOutput | undefined = generatedOutputs[selectedOutputIndex] || generatedOutputs[0];
+  const primarySourceImage = sourceImages[0];
+
+  const getStatusBadge = (out: GeneratedOutput) => {
+    const isDemo =
+      out.method === "demo" ||
+      out.method === "demo-plate-composite" ||
+      out.imageUrl.includes("/demo/") ||
+      out.imageUrl.endsWith(".svg");
+
+    if (isDemo) {
+      return (
+        <span
+          title="Hasil menggunakan simulasi demo"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-950/70 border border-purple-800 text-purple-300 whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
+        >
+          <Info className="w-3 h-3 shrink-0" />
+          <span className="truncate">Demo</span>
+        </span>
+      );
+    }
+
+    if (out.validation && out.validation.score && out.validation.score >= 80) {
+      return (
+        <span
+          title="Kesesuaian produk terverifikasi"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-950/70 border border-emerald-800 text-emerald-300 whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
+        >
+          <CheckCircle2 className="w-3 h-3 shrink-0" />
+          <span className="truncate">Hasil AI</span>
+        </span>
+      );
+    }
+
+    return (
+      <span
+        title="Belum diverifikasi secara otomatis"
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-zinc-800 border border-zinc-700 text-zinc-300 whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
+      >
+        <HelpCircle className="w-3 h-3 shrink-0" />
+        <span className="truncate">Belum diverifikasi</span>
+      </span>
+    );
   };
 
   return (
-    <div className="min-h-screen text-white flex flex-col font-sans">
-      {/* Top App Header */}
+    <div className="min-h-screen text-zinc-100 flex flex-col font-sans bg-zinc-950 overflow-x-hidden">
+      {/* Top Header */}
       <Header
         onLoadDemoProduct={handleLoadDemoProduct}
         onOpenHistory={() => setIsHistoryDrawerOpen(true)}
@@ -733,293 +676,546 @@ export default function Home() {
         demoRemaining={demoRemaining}
       />
 
-      {/* Main Studio Workspace with generous top padding */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-8">
-        {/* Core Concept Banner - Liquid Glass iOS Widget */}
-        <div className="mb-6 p-4 sm:p-5 liquid-glass-card flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#1951fc] to-[#3781fc] flex items-center justify-center text-white shrink-0 shadow-[0_6px_16px_rgba(25,81,252,0.45),inset_0_1px_1px_rgba(203,233,253,0.35)]">
-              <Camera className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-black text-white/90 tracking-tight uppercase">
-                  {t.page.studioPrinciple}
-                </span>
-                <span className="text-xs font-extrabold text-[#3781fc] bg-[#3781fc]/10 px-2.5 py-0.5 rounded-full border border-white/[0.06]">
-                  {t.page.productLocked}
-                </span>
-                <span className="text-xs font-semibold text-white/20">
-                  •
-                </span>
-                <span className="text-xs font-bold text-white/60">
-                  {t.page.photographyGenerative}
-                </span>
-              </div>
-              <p className="text-xs text-white/40 mt-1 font-medium">
-                {t.page.studioPrincipleDesc}
-              </p>
-            </div>
-          </div>
-
-          {sourceImages.length === 0 && (
-            <button
-              type="button"
-              onClick={handleLoadDemoProduct}
-              className="liquid-glass-btn-primary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-full shrink-0 cursor-pointer shadow-md"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>{t.page.exploreDemoFootwear}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Demo Quota Exceeded Notice with Action Button */}
-        {quotaExceededNotice && (
-          <div className="mb-6 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200 shadow-xl backdrop-blur-md">
-            <div className="flex items-start sm:items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shrink-0">
-                <KeyRound className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="font-bold text-amber-100 text-sm">{t.quota.exceededTitle}</p>
-                <p className="text-amber-200/80 mt-0.5">{t.quota.exceededMessage}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-              <button
-                type="button"
-                id="quota-use-own-key-btn"
-                onClick={() => {
-                  setIsApiSettingsOpen(true);
-                  setQuotaExceededNotice(false);
+      {/* Main Studio Workspace */}
+      <div className="flex-1 flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto overflow-hidden">
+        {/* ========================================================= */}
+        {/* LEFT PANEL: Fixed 320px on Desktop, Viewport Height       */}
+        {/* 1) Upload, 2) Preset Latar, 3) Aspek Rasio, 4) Tombol CTA */}
+        {/* ========================================================= */}
+        <aside className="w-full lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px] border-b lg:border-b-0 lg:border-r border-zinc-800 bg-zinc-950 flex flex-col lg:h-[calc(100vh-53px)] shrink-0">
+          {/* Scrollable controls container */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* 1. Upload Foto Produk */}
+            <div className="card-flat p-3.5 space-y-2.5">
+              <ProductSourceUpload
+                variant="compact"
+                images={sourceImages}
+                onAddImages={(newImgs) => setSourceImages((prev) => [...prev, ...newImgs])}
+                onRemoveImage={(id) => {
+                  setSourceImages((prev) => prev.filter((img) => img.id !== id));
+                  if (sourceImages.length <= 1) {
+                    setGeneratedOutputs([]);
+                    setHasStarted(false);
+                  }
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs bg-[#1951fc] hover:bg-[#3781fc] text-white shadow-[0_2px_8px_rgba(25,81,252,0.4)] cursor-pointer active:scale-95 transition-all"
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>{t.quota.useOwnKey}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuotaExceededNotice(false)}
-                className="p-1.5 rounded-full text-amber-200/60 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
-                title={t.page.dismiss}
-              >
-                <X className="w-4 h-4" />
-              </button>
+              />
             </div>
-          </div>
-        )}
 
-        {/* Global Error Notice */}
-        {errorMessage && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-between text-xs text-red-300">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>{errorMessage}</span>
-            </div>
+            {/* 2 & 3. Progressive Disclosure: Tampilkan Preset Latar & Rasio HANYA SETELAH FOTO DIUNGGAH */}
+            {sourceImages.length > 0 && (
+              <>
+                <div className="card-flat p-3.5 space-y-3">
+                  <CameraSettings
+                    direction={direction}
+                    onChangeDirection={setDirection}
+                    activeProvider={apiCredentials?.apiKey ? apiCredentials.provider : undefined}
+                    hideAdvancedSection={true}
+                  />
+                </div>
+
+                {/* Progressive Disclosure: Bagian "Lanjutan" (Tertutup secara default) */}
+                <div className="card-flat p-3.5 space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                    aria-expanded={isAdvancedOpen}
+                    aria-label={language === "id" ? "Buka atau tutup pengaturan lanjutan" : "Toggle advanced settings"}
+                    className="w-full flex items-center justify-between text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>{language === "id" ? "Pengaturan Lanjutan" : "Advanced Settings"}</span>
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${isAdvancedOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {isAdvancedOpen && (
+                    <div className="pt-2 border-t border-zinc-800 space-y-3.5">
+                      {/* Product Spec */}
+                      <ProductSpec
+                        category={category}
+                        onChangeCategory={(cat) => setCategory(cat)}
+                        detectedLabel={blueprint?.category === "footwear" ? "sepatu hak" : blueprint?.subcategory}
+                      />
+
+                      {/* Product Lock Toggle */}
+                      <ProductLocks locks={locks} onChangeLocks={setLocks} />
+
+                      {/* Camera Angle & Model from CameraSettings */}
+                      <div className="pt-1">
+                        <CameraSettings
+                          direction={direction}
+                          onChangeDirection={setDirection}
+                          activeProvider={apiCredentials?.apiKey ? apiCredentials.provider : undefined}
+                          hideAdvancedSection={false}
+                        />
+                      </div>
+
+                      {/* Output Count */}
+                      <div className="space-y-1.5 pt-1">
+                        <label className="block text-xs font-semibold text-zinc-300">
+                          {language === "id" ? "Jumlah Variasi Foto" : "Image Count"}
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[1, 2, 4].map((count) => (
+                            <button
+                              key={count}
+                              type="button"
+                              onClick={() => setGenerationCount(count)}
+                              className={`py-1.5 px-2 rounded-md border text-xs font-semibold transition-colors cursor-pointer ${
+                                generationCount === count
+                                  ? "bg-blue-600 text-white border-blue-500"
+                                  : "bg-zinc-900 text-zinc-400 hover:text-white border-zinc-800"
+                              }`}
+                            >
+                              {count} {language === "id" ? "Foto" : "Photos"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Optional Reference Upload */}
+                      <div className="pt-2 border-t border-zinc-800/80">
+                        <ReferenceUpload
+                          references={referenceImages}
+                          onAddReferences={(newRefs) => setReferenceImages((prev) => [...prev, ...newRefs])}
+                          onRemoveReference={(id) => setReferenceImages((prev) => prev.filter((img) => img.id !== id))}
+                          onSetCameraAngleToReference={() => {
+                            setDirection((prev) => ({ ...prev, cameraAngle: "copy_reference" }));
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 4. Tombol Utama "Buat foto" (Sticky di bawah panel kiri) */}
+          <div className="p-3 border-t border-zinc-800 bg-zinc-950/95 sticky bottom-0 z-10 space-y-2">
+            {!apiCredentials?.apiKey && sourceImages.length > 0 && (
+              <div className="p-2 rounded bg-amber-950/40 border border-amber-800/60 text-[11px] text-amber-300 flex items-center justify-between">
+                <span>{language === "id" ? "Mode Demo" : "Demo Mode"}</span>
+                <button
+                  type="button"
+                  onClick={() => setIsApiSettingsOpen(true)}
+                  className="font-medium underline hover:text-amber-200 cursor-pointer"
+                >
+                  {language === "id" ? "Atur Key" : "Set Key"}
+                </button>
+              </div>
+            )}
+
             <button
               type="button"
-              onClick={() => setErrorMessage(null)}
-              className="font-bold underline cursor-pointer text-red-200 hover:text-white"
+              id="main-generate-btn"
+              onClick={handleRunAgent}
+              disabled={isGenerating || sourceImages.length === 0}
+              aria-label={isGenerating ? "Sedang membuat foto" : "Buat foto produk studio"}
+              className="btn-primary w-full h-11 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-lg shadow-sm"
             >
-              {t.page.dismiss}
+              <Play className="w-4 h-4 fill-current shrink-0" />
+              <span>
+                {isGenerating
+                  ? (language === "id" ? "Membuat foto studio..." : "Generating studio photo...")
+                  : (language === "id" ? `Buat foto (${generationCount} gambar)` : `Create photo (${generationCount} images)`)}
+              </span>
             </button>
           </div>
-        )}
+        </aside>
 
-        {/* 2-Column Desktop Grid Layout (Section 32) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* LEFT PANEL: 55-60% (col-span-7) VELLUM Configuration Workspace */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="liquid-glass-card p-5 sm:p-7 space-y-6">
-              {/* SECTION 1: SOURCE VISUALS */}
-              <div>
-                <ProductSourceUpload
-                  images={sourceImages}
-                  onAddImages={(newImgs) =>
-                    setSourceImages((prev) => [...prev, ...newImgs])
-                  }
-                  onRemoveImage={(id) =>
-                    setSourceImages((prev) => prev.filter((img) => img.id !== id))
-                  }
-                  onUpdateTag={(id, tag) =>
-                    setSourceImages((prev) =>
-                      prev.map((img) => (img.id === id ? { ...img, tag } : img))
-                    )
-                  }
-                />
+        {/* ========================================================= */}
+        {/* CENTER CANVAS: Results are the center of the screen       */}
+        {/* ========================================================= */}
+        <main className="flex-1 flex flex-col lg:h-[calc(100vh-53px)] overflow-y-auto p-4 lg:p-6 bg-zinc-950/50">
+          {/* Error Notice */}
+          {errorMessage && (
+            <div className="mb-4 p-3 rounded-lg bg-red-950/50 border border-red-800 text-xs text-red-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setErrorMessage(null)}
+                aria-label="Tutup pesan error"
+                className="font-semibold underline hover:text-white cursor-pointer ml-3"
+              >
+                {t.page.dismiss}
+              </button>
+            </div>
+          )}
 
-                <ReferenceUpload
-                  references={referenceImages}
-                  onAddReferences={(newRefs) =>
-                    setReferenceImages((prev) => [...prev, ...newRefs])
-                  }
-                  onRemoveReference={(id) =>
-                    setReferenceImages((prev) => prev.filter((img) => img.id !== id))
-                  }
-                  onSetCameraAngleToReference={() => {
-                    setTimeout(() => {
-                      setDirection((prev) => ({ ...prev, cameraAngle: "copy_reference" }));
-                    }, 0);
-                  }}
-                />
+          {/* Quota Exceeded Notice */}
+          {quotaExceededNotice && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-950/50 border border-amber-800 text-xs text-amber-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>{t.quota.exceededTitle}: {t.quota.exceededMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsApiSettingsOpen(true)}
+                className="btn-secondary h-7 px-2.5 text-xs shrink-0 ml-3"
+              >
+                {t.quota.useOwnKey}
+              </button>
+            </div>
+          )}
+
+          {/* STATE 0: EMPTY STATE (Hero Upload & 1 Kalimat Tenang) */}
+          {sourceImages.length === 0 && (
+            <div className="flex-1 flex flex-col items-center justify-center py-12 px-4">
+              <ProductSourceUpload
+                variant="hero"
+                images={sourceImages}
+                onAddImages={(newImgs) => setSourceImages((prev) => [...prev, ...newImgs])}
+                onRemoveImage={() => {}}
+              />
+
+              <div className="mt-6 flex items-center gap-3">
+                <button
+                  type="button"
+                  id="empty-state-load-demo"
+                  onClick={handleLoadDemoProduct}
+                  className="btn-secondary h-8 px-3 text-xs gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                  <span>{language === "id" ? "Atau coba produk demo sepatu" : "Or try demo footwear"}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STATE 1: SETELAH UPLOAD, SEBELUM GENERATE (Pratinjau Foto Asli & Potongan Produk) */}
+          {sourceImages.length > 0 && generatedOutputs.length === 0 && !isGenerating && (
+            <div className="flex-1 flex flex-col justify-center max-w-4xl w-full mx-auto space-y-4 py-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-zinc-100">
+                    {language === "id" ? "Pratinjau Foto Asli & Potongan Produk" : "Original Photo & Cutout Inspection"}
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {language === "id"
+                      ? "Periksa ketajaman dan isolasi produk sebelum sistem AI membuat latar studio komersial."
+                      : "Evaluate product contour and isolation before AI generates the commercial studio backdrop."}
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{language === "id" ? "Produk siap diproses" : "Product ready"}</span>
+                </div>
               </div>
 
-              {/* SECTION 2: PHYSICAL PRODUCT SPECIFICATION */}
-              <ProductSpec
-                category={category}
-                onChangeCategory={(cat) => setCategory(cat)}
-                detectedLabel={blueprint?.category === "footwear" ? "sepatu hak" : blueprint?.subcategory}
-              />
-
-              {/* SECTION 3: CAMERA & ENVIRONMENT */}
-              <CameraSettings
-                direction={direction}
-                onChangeDirection={setDirection}
-                activeProvider={apiCredentials?.apiKey ? apiCredentials.provider : undefined}
-              />
-
-              {/* SECTION 4: PRODUCT LOCK */}
-              <ProductLocks locks={locks} onChangeLocks={setLocks} />
-
-              {/* BOTTOM EXECUTION BAR - Clean, Centered & Simple */}
-              <div className="pt-6 border-t border-white/[0.05] flex flex-col items-center justify-center gap-3.5 w-full">
-                {/* 1. Centered Output Count Selector */}
-                <div className="inline-flex items-center gap-3 bg-white/[0.04] px-4 py-1.5 rounded-full border border-white/[0.07] shadow-[0_2px_8px_rgba(3,25,91,0.2)]">
-                  <span className="text-xs font-bold text-white/80 tracking-wider uppercase">
-                    {t.page.generationCount}
-                  </span>
-                  <div className="flex items-center gap-1 bg-white/[0.04] p-0.5 rounded-full border border-white/[0.06]">
-                    {[1, 2, 4, 6, 8].map((count) => (
-                      <button
-                        key={count}
-                        type="button"
-                        onClick={() => setGenerationCount(count)}
-                        className={`w-7 h-7 text-xs font-bold rounded-full transition-all cursor-pointer ${
-                          generationCount === count
-                            ? "bg-[#1951fc] text-white shadow-[0_2px_8px_rgba(25,81,252,0.5)] scale-105"
-                            : "text-white/60 hover:text-white hover:bg-[#1951fc]/20"
-                        }`}
-                      >
-                        {count}
-                      </button>
-                    ))}
+              {/* Side-by-side inspection grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Foto Asli */}
+                <div className="card-flat overflow-hidden flex flex-col">
+                  <div className="p-2.5 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/60">
+                    <span className="text-xs font-semibold text-zinc-200">
+                      {language === "id" ? "Foto Mentah Asli" : "Original Raw Photo"}
+                    </span>
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                      {primarySourceImage?.width && primarySourceImage?.height
+                        ? `${primarySourceImage.width}×${primarySourceImage.height}px`
+                        : "Source"}
+                    </span>
+                  </div>
+                  <div className="relative aspect-square w-full bg-zinc-950 flex items-center justify-center p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={primarySourceImage?.dataUrl}
+                      alt="Foto mentah produk asli"
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                 </div>
 
-                {/* Demo Mode Notice before generate (Fase 1) */}
-                {!apiCredentials?.apiKey && (
-                  <div className="w-full sm:max-w-md p-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-200 flex items-center justify-between gap-3 text-xs shadow-xs">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <KeyRound className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="truncate">
-                        {language === "id"
-                          ? "Mode demo: masukkan API key untuk hasil asli"
-                          : "Demo mode: enter API key for authentic results"}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsApiSettingsOpen(true)}
-                      className="px-3 py-1 text-[11px] font-bold rounded-full bg-amber-500 hover:bg-amber-400 text-black shrink-0 cursor-pointer transition-all active:scale-95"
-                    >
-                      {language === "id" ? "Atur Key" : "Set Key"}
-                    </button>
+                {/* 2. Potongan Produk (Cutout Mask on Checkerboard) */}
+                <div className="card-flat overflow-hidden flex flex-col">
+                  <div className="p-2.5 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/60">
+                    <span className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-blue-400" />
+                      <span>{language === "id" ? "Potongan Produk (Mask)" : "Product Cutout (Mask)"}</span>
+                    </span>
+                    <span className="text-[10px] text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800 font-medium">
+                      {language === "id" ? "Piksel Asli Terkunci" : "Authentic Pixels Locked"}
+                    </span>
                   </div>
-                )}
+                  <div
+                    className="relative aspect-square w-full flex items-center justify-center p-3"
+                    style={{
+                      backgroundColor: "#09090b",
+                      backgroundImage: "linear-gradient(45deg, #18181b 25%, transparent 25%), linear-gradient(-45deg, #18181b 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #18181b 75%), linear-gradient(-45deg, transparent 75%, #18181b 75%)",
+                      backgroundSize: "16px 16px",
+                      backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
+                    }}
+                  >
+                    {/* Cutout preview: authentic product isolated on checkerboard */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={primarySourceImage?.dataUrl}
+                      alt="Pratinjau potongan produk"
+                      className="w-full h-full object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)]"
+                    />
+                  </div>
+                </div>
+              </div>
 
-                {/* 2. Main Centered Hero Button: Run Agent */}
+              {/* Action Banner to proceed */}
+              <div className="card-flat-subtle p-3 rounded-lg flex items-center justify-between text-xs">
+                <span className="text-zinc-400">
+                  {language === "id"
+                    ? "Pilih preset latar dan rasio di panel kiri, lalu klik tombol 'Buat foto'."
+                    : "Choose backdrop preset and ratio on the left, then click 'Create photo'."}
+                </span>
                 <button
                   type="button"
                   onClick={handleRunAgent}
-                  disabled={isGenerating || sourceImages.length === 0}
-                  className="w-full sm:max-w-md py-3.5 px-8 rounded-full liquid-glass-btn-primary font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-[0_12px_30px_rgba(25,81,252,0.45)] hover:shadow-[0_16px_40px_rgba(25,81,252,0.6)] transition-all transform hover:-translate-y-0.5 active:scale-98"
+                  className="btn-primary h-8 px-3.5 text-xs gap-1.5 shrink-0"
                 >
-                  <Play className="w-4 h-4 fill-white text-white shrink-0" />
-                  <span>
-                    {isGenerating
-                      ? t.page.directingShoot
-                      : `⚡ Run Agent (Generate ${generationCount} Images)`}
-                  </span>
-                </button>
-
-                {/* 3. Subtle Concept Art trigger */}
-                <button
-                  id="open-concept-art-btn"
-                  type="button"
-                  onClick={() => setIsConceptArtOpen(true)}
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold text-purple-300 hover:text-purple-200 bg-purple-500/15 hover:bg-purple-500/25 border border-purple-400/25 transition-all cursor-pointer transform hover:-translate-y-0.5 active:scale-98"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span>{t.conceptArt.title || "Buka AI Concept Art Generator"}</span>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>{language === "id" ? "Buat foto sekarang" : "Create photo now"}</span>
                 </button>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* RIGHT PANEL: 40-45% (col-span-5) Agent Monitor & Results */}
-          <div className="lg:col-span-5 space-y-6">
-            <AgentMonitor
-              steps={pipelineSteps}
-              isGenerating={isGenerating}
-              hasStarted={hasStarted}
-              blueprint={blueprint}
-              onOpenBlueprint={() => setIsBlueprintModalOpen(true)}
-              onRetry={handleRunAgent}
-              currentLogMessage={currentLogMessage}
-            />
+          {/* STATE 2: SAAT GENERATE (Agent Monitor 4 Langkah Jujur) */}
+          {isGenerating && (
+            <div className="flex-1 flex flex-col justify-center max-w-2xl w-full mx-auto py-6">
+              <AgentMonitor
+                steps={pipelineSteps}
+                isGenerating={isGenerating}
+                hasStarted={hasStarted}
+                blueprint={blueprint}
+                onOpenBlueprint={() => setIsBlueprintModalOpen(true)}
+                onRetry={handleRunAgent}
+                currentLogMessage={currentLogMessage}
+              />
+            </div>
+          )}
 
-            {/* Degraded Generation Warning Banner */}
-            {generatedOutputs.some((o) => o.degraded) && (() => {
-              const inpaintFallbackOutputs = generatedOutputs.filter(
-                (o) => o.method === "stability-core" || o.method === "replicate-flux"
-              );
-              const isOnlyInpaintFallback =
-                inpaintFallbackOutputs.length > 0 &&
-                inpaintFallbackOutputs.length === generatedOutputs.filter((o) => o.degraded).length;
+          {/* STATE 3: SETELAH GENERATE (Hero Before/After Slider Pusat Layar) */}
+          {generatedOutputs.length > 0 && !isGenerating && (
+            <div className="flex-1 flex flex-col max-w-4xl w-full mx-auto space-y-4">
+              {/* Slider Header: Status & Direct Actions */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-zinc-800">
+                <div className="flex items-center gap-2">
+                  {activeOutput && getStatusBadge(activeOutput)}
+                  <span className="text-xs text-zinc-400">
+                    {language === "id" ? "Perbandingan Foto Asli vs Studio AI" : "Original vs AI Studio Output"}
+                  </span>
+                </div>
 
-              const degradedMsg = isOnlyInpaintFallback
-                ? "Sebagian atau seluruh gambar beralih ke fallback text-to-image karena inpainting gagal (dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat)."
-                : "Gambar dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat.";
+                <div className="flex items-center gap-2">
+                  {/* Download PNG Button */}
+                  {activeOutput && (
+                    <button
+                      type="button"
+                      id="hero-download-btn"
+                      onClick={() => handleDownloadSingle(activeOutput.imageUrl, activeOutput.angle || "foto-studio", "png")}
+                      aria-label="Unduh foto aktif dalam format PNG"
+                      className="btn-primary h-8 px-3 text-xs gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{language === "id" ? "Unduh PNG" : "Download PNG"}</span>
+                    </button>
+                  )}
 
-              return (
-                <div className="p-2.5 sm:p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 backdrop-blur-md text-amber-200 flex items-center gap-2.5 shadow-md">
-                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] sm:text-xs text-amber-200/90 leading-snug line-clamp-2">
-                      <strong className="font-semibold text-amber-300">
-                        Degraded ({generatedOutputs.filter((o) => o.degraded).length}/{generatedOutputs.length}):{" "}
-                      </strong>
-                      {degradedMsg}
-                    </p>
+                  {/* Regenerate / Reset Button */}
+                  <button
+                    type="button"
+                    id="hero-regenerate-btn"
+                    onClick={handleRunAgent}
+                    disabled={isGenerating}
+                    aria-label="Atur ulang atau buat variasi baru"
+                    className="btn-secondary h-8 px-3 text-xs gap-1.5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>{language === "id" ? "Atur ulang" : "Regenerate"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Large Inline Before/After Slider */}
+              {activeOutput && primarySourceImage && (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="w-full max-w-[620px]">
+                    <BeforeAfterSlider
+                      inline={true}
+                      sourceUrl={primarySourceImage.dataUrl}
+                      sourceLabel={language === "id" ? "Foto Asli" : "Original"}
+                      generatedUrl={activeOutput.imageUrl}
+                      generatedLabel={language === "id" ? "Hasil Studio AI" : "AI Studio"}
+                    />
                   </div>
                 </div>
-              );
-            })()}
+              )}
 
-            {/* Generated Results Gallery (Section 25) */}
-            <ResultGallery
-              outputs={generatedOutputs}
-              sourceImages={sourceImages}
-              onRegenerateSingle={handleRegenerateSingle}
-              onRegenerateAll={handleRunAgent}
-              onDeleteSingle={handleDeleteSingle}
-              isGenerating={isGenerating}
-            />
-          </div>
-        </div>
-    </main>
+              {/* Output Variations Thumbnail Strip */}
+              {generatedOutputs.length > 1 && (
+                <div className="space-y-1.5 pt-2 border-t border-zinc-800">
+                  <span className="text-xs font-semibold text-zinc-300 block">
+                    {language === "id" ? "Pilih Variasi Hasil:" : "Select Variation:"}
+                  </span>
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                    {generatedOutputs.map((out, idx) => {
+                      const isSelected = selectedOutputIndex === idx;
+                      return (
+                        <button
+                          key={out.id}
+                          type="button"
+                          onClick={() => setSelectedOutputIndex(idx)}
+                          aria-label={`Pilih variasi ${idx + 1}`}
+                          className={`relative w-16 h-16 rounded-lg overflow-hidden border p-1 bg-zinc-900 transition-colors shrink-0 cursor-pointer ${
+                            isSelected ? "border-blue-500 ring-2 ring-blue-500" : "border-zinc-800 hover:border-zinc-700"
+                          }`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={out.imageUrl}
+                            alt={out.angle || `Variasi ${idx + 1}`}
+                            className="w-full h-full object-contain pointer-events-none"
+                          />
+                          <span className="absolute bottom-1 right-1 text-[9px] font-mono bg-zinc-950/80 px-1 rounded text-zinc-300">
+                            #{idx + 1}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
 
-      {/* Blueprint Facts & JSON Modal */}
+        {/* ========================================================= */}
+        {/* RIGHT PANEL: Collapsible 240px History on Desktop         */}
+        {/* ========================================================= */}
+        <aside
+          className={`hidden lg:flex flex-col border-l border-zinc-800 bg-zinc-950 h-[calc(100vh-53px)] transition-all duration-200 shrink-0 ${
+            isRightSidebarOpen ? "w-[240px] min-w-[240px] max-w-[240px]" : "w-[44px] min-w-[44px] max-w-[44px]"
+          }`}
+        >
+          {isRightSidebarOpen ? (
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                  <span className="text-xs font-semibold text-zinc-200">
+                    {language === "id" ? "Riwayat Hasil" : "History"}
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded">
+                    {historyItems.length}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsRightSidebarOpen(false)}
+                  aria-label="Lipat panel riwayat"
+                  className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* History list */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+                {historyItems.length === 0 ? (
+                  <div className="h-48 flex flex-col items-center justify-center text-center p-4 text-zinc-500">
+                    <Clock className="w-6 h-6 mb-2 stroke-[1.5]" />
+                    <p className="text-xs font-medium text-zinc-400">{t.history.noHistory}</p>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">{t.history.noHistoryDesc}</p>
+                  </div>
+                ) : (
+                  historyItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="card-flat-subtle p-2 rounded-lg space-y-1.5 hover:border-zinc-700 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-zinc-300 truncate max-w-[120px]">
+                          {item.projectName}
+                        </span>
+                        <span className="text-[9px] font-mono text-zinc-500">
+                          {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+
+                      {/* Output thumb */}
+                      <div className="flex items-center gap-1.5">
+                        {item.outputs.slice(0, 3).map((out, oIdx) => (
+                          <div
+                            key={oIdx}
+                            className="w-12 h-12 rounded bg-zinc-900 border border-zinc-800 overflow-hidden shrink-0 flex items-center justify-center"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={out.imageUrl}
+                              alt="output thumbnail"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center justify-between pt-1 border-t border-zinc-800/80 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => handleLoadHistoryItem(item)}
+                          className="text-blue-400 hover:text-blue-300 cursor-pointer"
+                        >
+                          {language === "id" ? "Lihat" : "View"}
+                        </button>
+                        {item.outputs[0] && (
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadSingle(item.outputs[0].imageUrl, item.projectName, "png")}
+                            className="text-zinc-400 hover:text-white inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <Download className="w-2.5 h-2.5" />
+                            <span>PNG</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Collapsed narrow strip */
+            <div className="flex flex-col items-center py-3 h-full">
+              <button
+                type="button"
+                onClick={() => setIsRightSidebarOpen(true)}
+                aria-label="Buka panel riwayat"
+                className="p-1.5 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="mt-4 [writing-mode:vertical-rl] rotate-180 flex items-center gap-2 text-xs font-medium text-zinc-500">
+                <Clock className="w-3.5 h-3.5 rotate-90" />
+                <span>{language === "id" ? "Riwayat Hasil" : "History"}</span>
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
+
+      {/* Blueprint Modal */}
       <BlueprintModal
         blueprint={blueprint}
         isOpen={isBlueprintModalOpen}
         onClose={() => setIsBlueprintModalOpen(false)}
       />
 
-      {/* Generation History Drawer */}
+      {/* Mobile History Drawer */}
       <HistoryDrawer
         history={historyItems}
         isOpen={isHistoryDrawerOpen}
@@ -1034,21 +1230,19 @@ export default function Home() {
         }}
       />
 
-      {/* AI Concept Art Generator Modal */}
+      {/* Concept Art Generator Modal */}
       <ConceptArtGenerator
         isOpen={isConceptArtOpen}
         onClose={() => setIsConceptArtOpen(false)}
       />
 
-      {/* BYOK API Key Settings Modal */}
+      {/* BYOK API Settings Modal */}
       <ApiSettingsModal
         isOpen={isApiSettingsOpen}
         onClose={() => setIsApiSettingsOpen(false)}
         onSaveCredentials={(creds, remember) => {
           handleSaveCredentials(creds, remember);
-          if (creds?.apiKey) {
-            setQuotaExceededNotice(false);
-          }
+          if (creds?.apiKey) setQuotaExceededNotice(false);
         }}
         currentCredentials={apiCredentials}
       />

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState } from "react";
 import { Key, Eye, EyeOff, CheckCircle2, ExternalLink, X } from "lucide-react";
 
@@ -179,8 +179,7 @@ export function ApiSettingsPanel({
                             value={apiKeys[p.id] ?? ""}
                             onChange={(e) => onApiKeyChange(p.id, e.target.value)}
                             placeholder={p.keyPlaceholder}
-                            className="w-full pr-10 pl-3.5 py-2.5 text-sm font-mono liquid-glass-input"
-                            style={{ borderRadius: "12px" }}
+                            className="w-full pr-10 pl-3.5 py-2 text-sm font-mono input-flat rounded-lg"
                           />
                           <button type="button"
                             onClick={() => setShowKeys((prev) => ({ ...prev, [p.id]: !prev[p.id] }))}

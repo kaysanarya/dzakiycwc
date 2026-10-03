@@ -20,6 +20,7 @@ interface CameraSettingsProps {
   direction: PhotographyDirection;
   onChangeDirection: (updated: PhotographyDirection) => void;
   activeProvider?: string;
+  hideAdvancedSection?: boolean;
 }
 
 interface BackgroundPresetItem {
@@ -37,97 +38,84 @@ const BACKGROUND_PRESETS: BackgroundPresetItem[] = [
     id: "studio_beige",
     nameId: "Studio Beige",
     nameEn: "Studio Beige",
-    descId: "Podium krem hangat, bayangan lembut",
-    descEn: "Warm neutral podium, soft ambient shadow",
-    previewClass: "bg-gradient-to-b from-[#f5efe6] to-[#e6dccd] border-[#d8ccba]",
+    descId: "Podium krem, bayangan lembut",
+    descEn: "Warm neutral podium",
+    previewClass: "bg-[#e8decb] border-[#d4c6af]",
   },
   {
     id: "studio_white",
     nameId: "Studio White",
     nameEn: "Studio White",
-    descId: "Latar putih bersih tanpa pantulan",
-    descEn: "Pure clean white cyclorama",
-    previewClass: "bg-white border-slate-200",
+    descId: "Latar putih bersih",
+    descEn: "Pure clean white",
+    previewClass: "bg-white border-zinc-300",
   },
   {
     id: "lifestyle",
-    nameId: "Lifestyle Interior",
-    nameEn: "Lifestyle Interior",
-    descId: "Interior batu arsitektur estetik",
-    descEn: "Warm architectural limestone",
-    previewClass: "bg-gradient-to-br from-[#dfd7cc] via-[#c9bfaf] to-[#b3a896] border-[#baa995]",
+    nameId: "Lifestyle",
+    nameEn: "Lifestyle",
+    descId: "Batu arsitektur minimalis",
+    descEn: "Architectural stone",
+    previewClass: "bg-gradient-to-br from-[#c9bfaf] to-[#9c8e79] border-zinc-600",
   },
   {
     id: "gradient",
-    nameId: "Studio Gradasi",
+    nameId: "Gradasi Studio",
     nameEn: "Studio Gradient",
-    descId: "Gradasi studio gelap dan amber",
-    descEn: "Smooth studio dark gradient",
-    previewClass: "bg-gradient-to-b from-[#1e293b] to-[#0f172a] border-slate-700",
+    descId: "Gradasi gelap elegan",
+    descEn: "Dark elegant gradient",
+    previewClass: "bg-gradient-to-b from-zinc-700 to-zinc-900 border-zinc-600",
   },
   {
     id: "transparent",
     nameId: "Transparan",
     nameEn: "Transparent",
-    descId: "Latar transparan dengan bayangan lantai",
-    descEn: "Transparent PNG with grounding shadow",
-    previewClass: "bg-[radial-gradient(#94a3b8_1px,transparent_1px)] [background-size:8px_8px] bg-slate-900 border-slate-700",
+    descId: "PNG transparan + bayangan",
+    descEn: "Transparent PNG",
+    previewClass: "bg-[radial-gradient(#52525b_1px,transparent_1px)] [background-size:6px_6px] bg-zinc-900 border-zinc-700",
   },
   {
     id: "exact_reference",
     nameId: "Ikuti Referensi",
     nameEn: "Match Reference",
-    descId: "Meniru tata cahaya foto referensi",
-    descEn: "Replicate reference photo lighting",
-    previewClass: "bg-gradient-to-br from-[#1e3a8a] via-[#1e1b4b] to-[#0f172a] border-indigo-500/50",
+    descId: "Meniru tata cahaya foto",
+    descEn: "Match photo lighting",
+    previewClass: "bg-gradient-to-br from-blue-900 to-zinc-900 border-blue-600/50",
   },
 ];
 
 const ASPECT_RATIOS: { ratio: AspectRatio; name: string; descId: string; descEn: string }[] = [
-  { ratio: "1:1", name: "1:1", descId: "Persegi (Feed / Shopee)", descEn: "Square (Feed / Catalog)" },
-  { ratio: "4:5", name: "4:5", descId: "Potret (Instagram)", descEn: "Portrait (Instagram)" },
-  { ratio: "9:16", name: "9:16", descId: "Vertikal (Story / TikTok)", descEn: "Vertical (Story / TikTok)" },
+  { ratio: "1:1", name: "1:1", descId: "Persegi (Feed)", descEn: "Square" },
+  { ratio: "4:5", name: "4:5", descId: "Potret (IG)", descEn: "Portrait" },
+  { ratio: "9:16", name: "9:16", descId: "Vertikal (Story)", descEn: "Vertical" },
 ];
 
 const CAMERA_ANGLES: { value: CameraAngle; labelId: string; labelEn: string }[] = [
-  { value: "three_quarter", labelId: "3/4 Diagonal (Hero)", labelEn: "3/4 Front Diagonal (Hero)" },
-  { value: "front", labelId: "Lurus Depan", labelEn: "Straight-on Front" },
-  { value: "side", labelId: "Samping (Profil)", labelEn: "Side Profile" },
-  { value: "top", labelId: "Atas (Flatlay)", labelEn: "Top-Down Flatlay" },
-  { value: "copy_reference", labelId: "Ikuti Sudut Referensi", labelEn: "Match Reference Angle" },
+  { value: "three_quarter", labelId: "3/4 Diagonal", labelEn: "3/4 Diagonal" },
+  { value: "front", labelId: "Lurus Depan", labelEn: "Front" },
+  { value: "side", labelId: "Samping", labelEn: "Side Profile" },
+  { value: "top", labelId: "Atas (Flatlay)", labelEn: "Top Flatlay" },
+  { value: "copy_reference", labelId: "Ikuti Referensi", labelEn: "Match Ref" },
 ];
 
 export function CameraSettings({
   direction,
   onChangeDirection,
   activeProvider,
+  hideAdvancedSection = false,
 }: CameraSettingsProps) {
   const { language } = useLanguage();
 
-  // Only active when provider supports image-conditioned editing (Stability / Replicate)
   const supportsImageConditioning = activeProvider === "stability" || activeProvider === "replicate";
 
   return (
-    <div className="space-y-4 pt-2">
-      <div className="border-b border-white/[0.08] pb-2 flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
-            <span>{language === "id" ? "Kamera & Latar Studio" : "Camera & Studio Backdrop"}</span>
-          </h3>
-          <p className="text-xs text-white/60 mt-0.5 font-medium">
-            {language === "id"
-              ? "Pilih suasana latar, sudut pandang kamera, dan rasio foto katalog."
-              : "Choose backdrop atmosphere, camera perspective, and catalog framing."}
-          </p>
-        </div>
-      </div>
-
-      {/* 1. Visual Background Presets Grid (Max 6 with thumbnails) */}
-      <div className="space-y-2">
-        <label className="block text-xs font-bold text-white flex items-center gap-1.5">
-          <span>{language === "id" ? "Pilihan Latar Belakang (6 Preset)" : "Studio Backdrop (6 Presets)"}</span>
+    <div className="space-y-4">
+      {/* 1. Visual Background Presets Grid (6 presets, 2 columns on sidebar) */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-semibold text-zinc-300">
+          {language === "id" ? "Pilihan Latar" : "Studio Backdrop"}
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 gap-2">
           {BACKGROUND_PRESETS.map((preset) => {
             const isSelected = direction.background === preset.id;
             return (
@@ -140,28 +128,25 @@ export function CameraSettings({
                     background: preset.id,
                   })
                 }
-                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-2 relative ${
+                className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
                   isSelected
-                    ? "bg-[#1951fc]/15 border-[#3781fc] shadow-[0_0_16px_rgba(25,81,252,0.3)] ring-1 ring-[#3781fc]"
-                    : "bg-white/[0.025] hover:bg-white/[0.05] border-white/[0.08] hover:border-white/[0.18]"
+                    ? "bg-blue-950/40 border-blue-500 text-blue-100 ring-1 ring-blue-500"
+                    : "bg-zinc-900/60 hover:bg-zinc-800/80 border-zinc-800 text-zinc-300"
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
-                  {/* Thumbnail Swatch */}
                   <div
-                    className={`w-7 h-7 rounded-xl border shadow-inner shrink-0 ${preset.previewClass}`}
+                    className={`w-5 h-5 rounded border shadow-inner shrink-0 ${preset.previewClass}`}
                   />
                   {isSelected && (
-                    <div className="w-5 h-5 rounded-full bg-[#1951fc] text-white flex items-center justify-center">
-                      <Check className="w-3 h-3 stroke-[3]" />
-                    </div>
+                    <Check className="w-3.5 h-3.5 text-blue-400 stroke-[3]" />
                   )}
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-white block">
+                  <span className="text-xs font-semibold block truncate">
                     {language === "id" ? preset.nameId : preset.nameEn}
                   </span>
-                  <span className="text-[10px] text-white/60 block mt-0.5 leading-snug line-clamp-2 font-medium">
+                  <span className="text-[10px] text-zinc-400 block truncate">
                     {language === "id" ? preset.descId : preset.descEn}
                   </span>
                 </div>
@@ -171,13 +156,13 @@ export function CameraSettings({
         </div>
       </div>
 
-      {/* 2. Aspect Ratio Selector (Strictly 1:1, 4:5, 9:16) */}
-      <div className="space-y-2 pt-1">
-        <label className="block text-xs font-bold text-white flex items-center gap-1.5">
-          <Ratio className="w-3.5 h-3.5 text-[#3781fc]" />
-          <span>{language === "id" ? "Ukuran & Rasio Foto" : "Aspect Ratio"}</span>
+      {/* 2. Aspect Ratio Selector (1:1, 4:5, 9:16) */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+          <Ratio className="w-3.5 h-3.5 text-zinc-400" />
+          <span>{language === "id" ? "Rasio Ukuran" : "Aspect Ratio"}</span>
         </label>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 gap-1.5">
           {ASPECT_RATIOS.map((item) => {
             const isSelected = direction.aspectRatio === item.ratio;
             return (
@@ -190,14 +175,14 @@ export function CameraSettings({
                     aspectRatio: item.ratio,
                   })
                 }
-                className={`py-3 px-2 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                className={`py-2 px-1 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                   isSelected
-                    ? "bg-[#1951fc] text-white border-[#3781fc] shadow-[0_4px_16px_rgba(25,81,252,0.4)] scale-[1.02]"
-                    : "bg-white/[0.03] text-white/80 hover:text-white border-white/[0.08] hover:bg-white/[0.06]"
+                    ? "bg-blue-600 text-white border-blue-500"
+                    : "bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800 border-zinc-800"
                 }`}
               >
-                <span className="text-sm font-mono font-extrabold">{item.name}</span>
-                <span className="text-[10px] opacity-80 font-medium">
+                <span className="text-xs font-mono font-bold">{item.name}</span>
+                <span className="text-[9px] opacity-80 truncate max-w-full">
                   {language === "id" ? item.descId : item.descEn}
                 </span>
               </button>
@@ -206,82 +191,80 @@ export function CameraSettings({
         </div>
       </div>
 
-      {/* 3. Camera Angle Selector */}
-      <div className="space-y-2 pt-1">
-        <label className="block text-xs font-bold text-white flex items-center gap-1.5">
-          <Camera className="w-3.5 h-3.5 text-[#3781fc]" />
-          <span>{language === "id" ? "Sudut Pandang Kamera" : "Camera Angle"}</span>
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {CAMERA_ANGLES.map((angle) => {
-            const isSelected = direction.cameraAngle === angle.value;
-            return (
-              <button
-                key={angle.value}
-                type="button"
-                onClick={() =>
-                  onChangeDirection({
-                    ...direction,
-                    cameraAngle: angle.value,
-                  })
-                }
-                className={`p-2.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer ${
-                  isSelected
-                    ? "bg-white/[0.12] text-white border-white/30 shadow-xs"
-                    : "bg-white/[0.025] text-white/70 hover:text-white border-white/[0.07] hover:bg-white/[0.05]"
-                }`}
-              >
-                {language === "id" ? angle.labelId : angle.labelEn}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* Optional advanced controls (Camera angle & model setting) */}
+      {!hideAdvancedSection && (
+        <>
+          {/* Camera Angle Selector */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+              <Camera className="w-3.5 h-3.5 text-zinc-400" />
+              <span>{language === "id" ? "Sudut Kamera" : "Camera Angle"}</span>
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {CAMERA_ANGLES.map((angle) => {
+                const isSelected = direction.cameraAngle === angle.value;
+                return (
+                  <button
+                    key={angle.value}
+                    type="button"
+                    onClick={() =>
+                      onChangeDirection({
+                        ...direction,
+                        cameraAngle: angle.value,
+                      })
+                    }
+                    className={`p-2 rounded-lg border text-xs font-medium text-center transition-all cursor-pointer truncate ${
+                      isSelected
+                        ? "bg-zinc-800 text-white border-zinc-600"
+                        : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border-zinc-800"
+                    }`}
+                  >
+                    {language === "id" ? angle.labelId : angle.labelEn}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-      {/* 4. Opsi "Dipakai di kaki / Dipegang tangan" (Hanya muncul jika provider mendukung image conditioning) */}
-      {supportsImageConditioning && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-400/30 space-y-2.5 mt-2">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span className="text-xs font-bold text-white">
-              {language === "id" ? "Dipakai di Kaki / Dipegang Tangan" : "On Foot / Held in Hand"}
-            </span>
-            <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500 text-black">
-              Eksperimental
-            </span>
-          </div>
-          <p className="text-[11px] text-amber-200/90 font-medium">
-            Produk tidak dijamin identik (menggunakan model generasi AI interaktif).
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-            {[
-              { value: "without_model", labelId: "Tanpa Model (Produk Saja)", labelEn: "Without Model (Default)" },
-              { value: "human_model", labelId: "Dipakai di Kaki", labelEn: "Worn on Foot" },
-              { value: "partial_hands", labelId: "Dipegang di Tangan", labelEn: "Held in Hand" },
-            ].map((opt) => {
-              const isSelected = direction.modelSetting === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() =>
-                    onChangeDirection({
-                      ...direction,
-                      modelSetting: opt.value as ModelSetting,
-                    })
-                  }
-                  className={`p-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-[#1951fc] text-white border-[#3781fc] shadow-xs"
-                      : "bg-black/30 text-white/70 hover:text-white border-white/[0.08] hover:bg-black/40"
-                  }`}
-                >
-                  {language === "id" ? opt.labelId : opt.labelEn}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+          {/* Model Setting (Only if provider supports image conditioning) */}
+          {supportsImageConditioning && (
+            <div className="p-3 rounded-lg border border-amber-800/40 bg-amber-950/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{language === "id" ? "Tampilan Model" : "Model Setting"}</span>
+                </span>
+                <span className="text-[9px] font-bold text-amber-400 bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">
+                  {language === "id" ? "Eksperimental" : "Experimental"}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-200/70">
+                {language === "id" ? "Produk tidak dijamin identik" : "Product details not guaranteed"}
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {(["without_model", "with_model"] as ModelSetting[]).map((setting) => {
+                  const isSelected = (direction.modelSetting || "without_model") === setting;
+                  return (
+                    <button
+                      key={setting}
+                      type="button"
+                      onClick={() => onChangeDirection({ ...direction, modelSetting: setting })}
+                      className={`p-1.5 rounded text-xs font-medium border text-center transition-all ${
+                        isSelected
+                          ? "bg-amber-500/20 text-amber-200 border-amber-500/50"
+                          : "bg-zinc-900/80 text-zinc-400 border-zinc-800"
+                      }`}
+                    >
+                      {setting === "without_model"
+                        ? language === "id" ? "Produk Saja" : "Product Only"
+                        : language === "id" ? "Dipakai di kaki" : "Worn on foot"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

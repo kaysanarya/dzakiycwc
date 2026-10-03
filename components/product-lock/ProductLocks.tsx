@@ -15,8 +15,8 @@ export function ProductLocks({ locks, onChangeLocks }: ProductLocksProps) {
   const isPreserved = locks.preserveProductDetails ?? true;
 
   return (
-    <div className="pt-2">
-      <label className="flex items-start gap-3.5 p-4 rounded-2xl liquid-glass-subcard border border-white/[0.08] hover:border-[#3781fc]/50 cursor-pointer transition-all shadow-xs select-none">
+    <div className="pt-1">
+      <label className="flex items-start gap-3 p-3 rounded-lg card-flat-subtle hover:border-zinc-700 cursor-pointer transition-colors select-none">
         <input
           type="checkbox"
           checked={isPreserved}
@@ -25,19 +25,19 @@ export function ProductLocks({ locks, onChangeLocks }: ProductLocksProps) {
               preserveProductDetails: e.target.checked,
             })
           }
-          className="mt-0.5 w-4 h-4 rounded text-[#1951fc] focus:ring-[#3781fc] accent-[#1951fc]"
+          className="mt-0.5 w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-blue-600 focus:ring-blue-500 accent-blue-600"
         />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[#3781fc] shrink-0" />
-            <span className="font-bold text-white text-xs sm:text-sm">
+            <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
+            <span className="font-semibold text-zinc-100 text-xs">
               {t.productLocks.preserveDetails}
             </span>
-            <span className="text-[10px] font-extrabold tracking-wider text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/40">
-              {language === "id" ? "AKTIF" : "ACTIVE"}
+            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800">
+              {language === "id" ? "Aktif" : "Active"}
             </span>
           </div>
-          <p className="text-white/70 text-xs mt-1 leading-relaxed font-medium">
+          <p className="text-zinc-400 text-[11px] mt-0.5 leading-relaxed font-normal">
             {t.productLocks.desc}
           </p>
         </div>

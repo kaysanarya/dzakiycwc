@@ -338,15 +338,14 @@ export function ConceptArtGenerator({ isOpen, onClose }: ConceptArtGeneratorProp
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder={ca.promptPlaceholder}
                     maxLength={600} rows={4}
-                    className="w-full resize-none text-sm text-white placeholder-slate-400 p-3.5 pr-12 liquid-glass-input"
-                    style={{ borderRadius: "18px" }} />
-                  <span className="absolute bottom-3 right-3 text-[9px] font-mono text-[#3781fc]/70">{prompt.length}/600</span>
+                    className="w-full resize-none text-sm text-zinc-100 placeholder-zinc-500 p-3.5 pr-12 input-flat rounded-xl"
+                  />
+                  <span className="absolute bottom-3 right-3 text-[9px] font-mono text-zinc-500">{prompt.length}/600</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {EXAMPLE_PROMPTS.slice(0, 3).map((ex, i) => (
                     <button key={i} onClick={() => { setPrompt(ex); promptRef.current?.focus(); }}
-                      className="text-[10px] px-2.5 py-1 rounded-full cursor-pointer font-semibold"
-                      style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#4f46e5" }}>
+                      className="text-[10px] px-2.5 py-1 rounded-full cursor-pointer font-semibold bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700">
                       {ca.example} {i + 1}
                     </button>
                   ))}
@@ -357,11 +356,11 @@ export function ConceptArtGenerator({ isOpen, onClose }: ConceptArtGeneratorProp
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-bold text-white/80 uppercase tracking-wider">{ca.movieRefLabel}</label>
                 <div className="relative">
-                  <Film className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#3781fc]/70" />
+                  <Film className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                   <input id="concept-art-movie-ref" value={filmReference}
                     onChange={(e) => setFilmReference(e.target.value)}
                     placeholder={ca.movieRefPlaceholder}
-                    className="w-full pl-9 pr-4 py-2.5 text-sm liquid-glass-input" />
+                    className="w-full pl-9 pr-4 py-2 text-sm input-flat rounded-lg" />
                 </div>
                 <p className="text-[10px] text-[#3781fc]/70 leading-snug">{ca.movieRefHint}</p>
               </div>

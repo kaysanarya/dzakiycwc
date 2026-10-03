@@ -118,24 +118,24 @@ export function ApiSettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#00030a]/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="liquid-glass-card max-w-xl w-full bg-[#0c101d]/95 backdrop-blur-2xl rounded-3xl p-6 sm:p-7 shadow-[0_24px_70px_rgba(0,0,0,0.85),0_0_0_1px_rgba(55,129,252,0.2)] border border-white/[0.12] space-y-5 text-white"
+        className="card-flat max-w-xl w-full p-5 sm:p-6 space-y-4 text-zinc-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-white/[0.08] pb-4">
+        <div className="flex items-start justify-between border-b border-zinc-800 pb-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#1951fc]/15 border border-[#3781fc]/30 flex items-center justify-center text-[#3781fc] shadow-2xs">
-              <KeyRound className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-300">
+              <KeyRound className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight">
+              <h3 className="text-sm font-semibold text-zinc-100">
                 {language === "id" ? "Pengaturan API Key AI" : "AI API Settings"}
               </h3>
-              <p className="text-xs text-white/70 font-medium mt-0.5">
+              <p className="text-xs text-zinc-400 mt-0.5">
                 {language === "id"
                   ? "Hubungkan model visual AI sungguhan untuk men-generate foto produk nyata."
                   : "Connect real AI image generation providers to produce authentic product photos."}
@@ -145,7 +145,8 @@ export function ApiSettingsModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full text-white/60 hover:text-white hover:bg-white/[0.08] cursor-pointer transition-colors"
+            aria-label="Tutup pengaturan API key"
+            className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer transition-colors"
           >
             ✕
           </button>
