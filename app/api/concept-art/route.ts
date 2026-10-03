@@ -205,13 +205,20 @@ export async function POST(req: NextRequest) {
     provider = "pollinations",
   } = body;
 
-  // Validate Provider, Body size, and Header x-api-key (BYOK)
-  const validation = validateApiKeyAndProvider(req, {
+  // Validate Provider, Body size, and Header x-api-key (BYOK priority with quota check)
+  const validation = await validateApiKeyAndProvider(req, {
     provider,
     isConceptArt: true,
+    quotaCost: provider !== "pollinations" ? 1 : 0,
   });
   if (!validation.allowed) {
-    return NextResponse.json({ error: validation.error }, { status: validation.status });
+    if (validation.status === 429) {
+      return NextResponse.json(
+        { code: "DEMO_QUOTA_EXCEEDED", error: validation.error, resetAt: validation.resetAt },
+        { status: 429, headers: { "x-demo-remaining": "0" } }
+      );
+    }
+    return NextResponse.json({ error: validation.error }, { status: validation.status ?? 400 });
   }
 
   if (!prompt || typeof prompt !== "string" || prompt.trim().length < 3) {
@@ -237,16 +244,21 @@ export async function POST(req: NextRequest) {
       result = await generatePollinations(fullPrompt, aspectRatio, randomSeed);
     }
 
+    const responseHeaders: Record<string, string> = {
+      "Content-Type": result.contentType,
+      "Cache-Control": "no-store",
+      "X-Seed": String(randomSeed),
+      "X-Dimensions": `${w}x${h}`,
+      "X-Style": style,
+      "X-Provider": provider,
+    };
+    if (validation.quotaRemaining !== undefined) {
+      responseHeaders["x-demo-remaining"] = String(validation.quotaRemaining);
+    }
+
     return new NextResponse(result.buffer, {
       status: 200,
-      headers: {
-        "Content-Type": result.contentType,
-        "Cache-Control": "no-store",
-        "X-Seed": String(randomSeed),
-        "X-Dimensions": `${w}x${h}`,
-        "X-Style": style,
-        "X-Provider": provider,
-      },
+      headers: responseHeaders,
     });
   } catch (err: unknown) {
     const msg = sanitizeErrorMessage(err, [validation.apiKey]);

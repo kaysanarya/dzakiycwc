@@ -15,10 +15,16 @@ export async function POST(req: NextRequest) {
       angle?: string;
     };
 
-    // Resolve provider & API key from server environment (no client key needed)
-    const validation = validateApiKeyAndProvider(req, {});
+    // Resolve provider & API key (BYOK priority with server key demo quota fallback)
+    const validation = await validateApiKeyAndProvider(req, { quotaCost: 0 });
     if (!validation.allowed) {
-      return NextResponse.json({ error: validation.error }, { status: validation.status });
+      if (validation.status === 429) {
+        return NextResponse.json(
+          { code: "DEMO_QUOTA_EXCEEDED", error: validation.error, resetAt: validation.resetAt },
+          { status: 429, headers: { "x-demo-remaining": "0" } }
+        );
+      }
+      return NextResponse.json({ error: validation.error }, { status: validation.status ?? 400 });
     }
     activeKey = validation.apiKey;
 
@@ -43,10 +49,14 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       success: true,
       validation: validationResult,
     });
+    if (validation.quotaRemaining !== undefined) {
+      res.headers.set("x-demo-remaining", String(validation.quotaRemaining));
+    }
+    return res;
   } catch (err: unknown) {
     const safeError = sanitizeErrorMessage(err, [activeKey]);
     console.error("API /api/validate error:", safeError);

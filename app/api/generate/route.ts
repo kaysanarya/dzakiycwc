@@ -41,10 +41,29 @@ export async function POST(req: NextRequest) {
       count?: number;
     };
 
-    // Resolve provider & API key (BYOK from request header x-api-key with server env fallback)
-    const validation = validateApiKeyAndProvider(req, {});
+    const requestedCount = Math.min(Math.max(1, count), 8);
+
+    // Resolve provider & API key (BYOK priority from request header with server env quota fallback)
+    const validation = await validateApiKeyAndProvider(req, { quotaCost: requestedCount });
 
     if (!validation.allowed) {
+      if (validation.status === 429) {
+        return NextResponse.json(
+          {
+            code: "DEMO_QUOTA_EXCEEDED",
+            error: validation.error,
+            resetAt: validation.resetAt,
+            remaining: 0,
+          },
+          {
+            status: 429,
+            headers: {
+              "x-demo-remaining": "0",
+              "Retry-After": Math.max(1, Math.ceil(((validation.resetAt ?? Date.now()) - Date.now()) / 1000)).toString(),
+            },
+          }
+        );
+      }
       return NextResponse.json(
         { success: false, error: { stage: "auth", message: validation.error } },
         { status: validation.status ?? 401 }
@@ -127,8 +146,6 @@ export async function POST(req: NextRequest) {
       `Strict Mode: ${preservation?.strictProductMode ?? true}`
     );
 
-    const requestedCount = Math.min(Math.max(1, count), 8);
-
     // Step 3: Generate Images (provider handles concurrency internally, max 3 per batch)
     const rawOutputs: GeneratedOutput[] = await generateImages(
       {
@@ -170,7 +187,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json(
+    const res = NextResponse.json(
       {
         success: true,
         provider: activeProvider.name,
@@ -186,6 +203,12 @@ export async function POST(req: NextRequest) {
         status: isPartial ? 207 : 200,
       }
     );
+
+    if (validation.quotaRemaining !== undefined) {
+      res.headers.set("x-demo-remaining", String(validation.quotaRemaining));
+    }
+
+    return res;
 
   } catch (err: unknown) {
     // Do not log AbortError as a server error — client disconnected intentionally

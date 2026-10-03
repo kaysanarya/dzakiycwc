@@ -122,13 +122,19 @@ export function resolveServerProvider(): string {
   return "demo";
 }
 
+import { checkAndConsumeDemoQuota } from "./demoQuota";
+
 export interface ValidateApiResult {
   allowed: boolean;
   status?: number;
   error?: string;
+  code?: string;
   apiKey?: string;
   provider: string;
   isDemo: boolean;
+  isByok?: boolean;
+  quotaRemaining?: number;
+  resetAt?: number;
 }
 
 /**
@@ -207,20 +213,21 @@ export async function readJsonBodyWithLimit<T = unknown>(
 }
 
 /**
- * Server-Centralized Validation:
+ * Hybrid Key & Provider Validation:
  * 1. Checks payload size.
- * 2. Resolves provider and API key from server-side environment variables ONLY.
- * 3. The browser NEVER sends or is required to send an API key.
- * 4. Falls back to demo mode gracefully when no env keys are configured.
+ * 2. Checks BYOK header (x-api-key) first: unlimited usage, no server storage or logging.
+ * 3. Fallback to server env key if available: strictly enforced with demo quota.
+ * 4. Fallback to Demo Engine if no keys configured.
  */
-export function validateApiKeyAndProvider(
+export async function validateApiKeyAndProvider(
   req: NextRequest,
   options: {
     provider?: string;
     isConceptArt?: boolean;
     bodySize?: number;
+    quotaCost?: number;
   }
-): ValidateApiResult {
+): Promise<ValidateApiResult> {
   // 1. Validate Body Size (Content-Length and measured body size)
   const contentLength = req.headers.get("content-length");
   if (contentLength) {
@@ -246,48 +253,42 @@ export function validateApiKeyAndProvider(
     };
   }
 
-  if (options.isConceptArt) {
-    // Concept art: always use Pollinations (free, no key needed) unless a server key is present
-    const serverProvider = resolveServerProvider();
-    if (serverProvider !== "demo" && (serverProvider === "gemini" || serverProvider === "openai")) {
-      const apiKey = resolveServerApiKey(serverProvider);
-      return {
-        allowed: true,
-        apiKey,
-        provider: serverProvider,
-        isDemo: false,
-      };
-    }
-    // Default concept art to pollinations (free)
-    return {
-      allowed: true,
-      provider: "pollinations",
-      isDemo: true,
-    };
-  }
-
-  // 1. Check client-provided BYOK headers first
+  // 2. Check client-provided BYOK headers first (PRIORITY: BYOK is unlimited)
   const clientKey = req.headers.get("x-api-key")?.trim();
   const rawClientProv = req.headers.get("x-provider")?.trim() || options.provider;
   const clientProvider = rawClientProv ? rawClientProv.toLowerCase() : undefined;
 
   if (clientKey) {
-    const prov = clientProvider || "stability";
-    if (!ALLOWED_PIPELINE_PROVIDERS.includes(prov as AllowedPipelineProvider)) {
-      return {
-        allowed: false,
-        status: 400,
-        error: `Provider AI tidak sah: "${prov}". Provider yang diizinkan: ${ALLOWED_PIPELINE_PROVIDERS.join(", ")}`,
-        provider: prov,
-        isDemo: false,
-      };
+    const prov = clientProvider || (options.isConceptArt ? "pollinations" : "stability");
+
+    if (options.isConceptArt) {
+      if (!ALLOWED_CONCEPT_ART_PROVIDERS.includes(prov as AllowedConceptArtProvider)) {
+        return {
+          allowed: false,
+          status: 400,
+          error: `Provider Concept Art tidak sah: "${prov}". Provider yang diizinkan: ${ALLOWED_CONCEPT_ART_PROVIDERS.join(", ")}`,
+          provider: prov,
+          isDemo: false,
+        };
+      }
+    } else {
+      if (!ALLOWED_PIPELINE_PROVIDERS.includes(prov as AllowedPipelineProvider)) {
+        return {
+          allowed: false,
+          status: 400,
+          error: `Provider AI tidak sah: "${prov}". Provider yang diizinkan: ${ALLOWED_PIPELINE_PROVIDERS.join(", ")}`,
+          provider: prov,
+          isDemo: false,
+        };
+      }
     }
 
-    if (prov === "demo") {
+    if (prov === "demo" || prov === "pollinations") {
       return {
         allowed: true,
-        provider: "demo",
+        provider: prov,
         isDemo: true,
+        isByok: true,
       };
     }
 
@@ -305,18 +306,61 @@ export function validateApiKeyAndProvider(
         error: `Format API key untuk provider ${prov} tidak sah. Harap periksa kembali di Pengaturan API Key.`,
         provider: prov,
         isDemo: false,
+        isByok: true,
       };
     }
 
+    // BYOK passes directly without quota consumption
     return {
       allowed: true,
       apiKey: clientKey,
       provider: prov,
       isDemo: false,
+      isByok: true,
     };
   }
 
-  // 2. Fallback to server-side environment variables
+  // 3. Fallback to server-side environment variables with quota check
+  if (options.isConceptArt) {
+    const requestedProv = options.provider;
+    if (requestedProv === "openai" || requestedProv === "gemini") {
+      const serverKey = resolveServerApiKey(requestedProv);
+      if (serverKey) {
+        const quota = await checkAndConsumeDemoQuota(req, options.quotaCost ?? 1);
+        if (!quota.allowed) {
+          return {
+            allowed: false,
+            status: 429,
+            code: "DEMO_QUOTA_EXCEEDED",
+            error: "Batas kuota demo harian telah tercapai. Harap gunakan API key Anda sendiri (BYOK) untuk melanjutkan tanpa batas.",
+            provider: requestedProv,
+            isDemo: false,
+            isByok: false,
+            quotaRemaining: 0,
+            resetAt: quota.resetAt,
+          };
+        }
+        return {
+          allowed: true,
+          apiKey: serverKey,
+          provider: requestedProv,
+          isDemo: false,
+          isByok: false,
+          quotaRemaining: quota.remaining,
+          resetAt: quota.resetAt,
+        };
+      }
+    }
+    // Default concept art to pollinations (free, no quota needed)
+    return {
+      allowed: true,
+      provider: "pollinations",
+      isDemo: true,
+      isByok: false,
+    };
+  }
+
+  // Pipeline routes (/api/analyze, /api/generate, /api/validate, /api/blueprint)
   const resolvedProvider = resolveServerProvider();
   const resolvedApiKey = resolveServerApiKey(resolvedProvider);
 
@@ -325,6 +369,23 @@ export function validateApiKeyAndProvider(
       allowed: true,
       provider: "demo",
       isDemo: true,
+      isByok: false,
+    };
+  }
+
+  // Server key exists: Enforce Demo Quota
+  const quota = await checkAndConsumeDemoQuota(req, options.quotaCost ?? 0);
+  if (!quota.allowed) {
+    return {
+      allowed: false,
+      status: 429,
+      code: "DEMO_QUOTA_EXCEEDED",
+      error: "Batas kuota demo harian telah tercapai. Harap gunakan API key Anda sendiri (BYOK) untuk melanjutkan tanpa batas.",
+      provider: resolvedProvider,
+      isDemo: false,
+      isByok: false,
+      quotaRemaining: 0,
+      resetAt: quota.resetAt,
     };
   }
 
@@ -333,6 +394,9 @@ export function validateApiKeyAndProvider(
     apiKey: resolvedApiKey,
     provider: resolvedProvider,
     isDemo: false,
+    isByok: false,
+    quotaRemaining: quota.remaining,
+    resetAt: quota.resetAt,
   };
 }
 
