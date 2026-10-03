@@ -37,11 +37,26 @@ export function getAIProvider(options?: ProviderOptions): AIProvider {
   }
 
   if (chosenProvider === "gemini") {
+    const rawVision = process.env.AI_VISION_MODEL?.trim();
+    const visionModel = (!rawVision || rawVision.includes("2.0") || rawVision.includes("1.5"))
+      ? "gemini-3.8-flash"
+      : rawVision;
+
+    const rawImage = process.env.AI_IMAGE_MODEL?.trim();
+    const imageModel = (!rawImage || rawImage.includes("imagen") || rawImage.includes("2.0"))
+      ? "gemini-3.1-flash-image"
+      : rawImage;
+
+    const rawValidation = process.env.AI_VALIDATION_MODEL?.trim();
+    const validationModel = (!rawValidation || rawValidation.includes("2.0") || rawValidation.includes("1.5"))
+      ? "gemini-3.8-flash"
+      : rawValidation;
+
     return new GeminiAIProvider({
       apiKey,
-      visionModel: process.env.AI_VISION_MODEL || "gemini-3.8-flash",
-      imageModel: process.env.AI_IMAGE_MODEL || "gemini-3.1-flash-image",
-      validationModel: process.env.AI_VALIDATION_MODEL || "gemini-3.8-flash",
+      visionModel,
+      imageModel,
+      validationModel,
     });
   }
 

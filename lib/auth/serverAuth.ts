@@ -445,6 +445,7 @@ export function sanitizeErrorMessage(
   // Redact known API key patterns
   message = message
     .replace(/AIza[0-9A-Za-z-_]{35}/g, "[REDACTED_GEMINI_KEY]")
+    .replace(/AQ\.[0-9A-Za-z-_]{20,}/g, "[REDACTED_GEMINI_KEY]")
     .replace(/sk-[a-zA-Z0-9_-]{20,}/g, "[REDACTED_SK_KEY]")
     .replace(/r8_[a-zA-Z0-9]{30,}/g, "[REDACTED_REPLICATE_KEY]")
     .replace(/Bearer\s+[a-zA-Z0-9._-]+/gi, "Bearer [REDACTED_TOKEN]")
