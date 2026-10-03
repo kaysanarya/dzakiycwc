@@ -248,28 +248,36 @@ async function applyAmbientColorBounce(
   scaledW: number,
   scaledH: number
 ): Promise<Buffer> {
-  const bounceSvg = `
-    <svg width="${scaledW}" height="${scaledH}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="bounceGrad" x1="0%" y1="100%" x2="0%" y2="70%">
-          <stop offset="0%" stop-color="#d8cebf" stop-opacity="0.30" />
-          <stop offset="50%" stop-color="#e8decb" stop-opacity="0.12" />
-          <stop offset="100%" stop-color="#e8decb" stop-opacity="0.0" />
-        </linearGradient>
-      </defs>
-      <rect width="${scaledW}" height="${scaledH}" fill="url(#bounceGrad)" />
-    </svg>
-  `;
+  try {
+    const meta = await sharp(productBuffer).metadata();
+    const w = meta.width || scaledW;
+    const h = meta.height || scaledH;
 
-  return sharp(productBuffer)
-    .composite([
-      {
-        input: Buffer.from(bounceSvg),
-        blend: "soft-light",
-      },
-    ])
-    .png()
-    .toBuffer();
+    const bounceSvg = `
+      <svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bounceGrad" x1="0%" y1="100%" x2="0%" y2="70%">
+            <stop offset="0%" stop-color="#d8cebf" stop-opacity="0.30" />
+            <stop offset="50%" stop-color="#e8decb" stop-opacity="0.12" />
+            <stop offset="100%" stop-color="#e8decb" stop-opacity="0.0" />
+          </linearGradient>
+        </defs>
+        <rect width="${w}" height="${h}" fill="url(#bounceGrad)" />
+      </svg>
+    `;
+
+    return await sharp(productBuffer)
+      .composite([
+        {
+          input: Buffer.from(bounceSvg),
+          blend: "soft-light",
+        },
+      ])
+      .png()
+      .toBuffer();
+  } catch {
+    return productBuffer;
+  }
 }
 
 /**
@@ -374,7 +382,7 @@ export async function compositeProductOnPlate(options: CompositeProductOptions):
 
   // 6. Final Multi-layer Composite:
   // Background Plate -> Ambient Penumbra -> Directional Cast Shadow -> Contact Occlusion -> Authentic Integrated Product
-  const compositeLayers: OverlayOptions[] = [
+  const rawLayers: OverlayOptions[] = [
     {
       input: shadows.ambientPenumbra.input,
       left: penumbraLeft,
@@ -401,8 +409,40 @@ export async function compositeProductOnPlate(options: CompositeProductOptions):
     },
   ];
 
+  // Defensive validation & clamping: ensure NO overlay ever exceeds plate dimensions or boundary
+  const safeCompositeLayers: OverlayOptions[] = [];
+  for (const layer of rawLayers) {
+    if (!layer.input) continue;
+    let inputBuf = layer.input as Buffer;
+    const lMeta = await sharp(inputBuf).metadata();
+    let lW = lMeta.width || 0;
+    let lH = lMeta.height || 0;
+
+    let finalLeft = typeof layer.left === "number" ? layer.left : 0;
+    let finalTop = typeof layer.top === "number" ? layer.top : 0;
+
+    if (lW > plateW || lH > plateH) {
+      const targetW = Math.min(lW, plateW);
+      const targetH = Math.min(lH, plateH);
+      inputBuf = await sharp(inputBuf).resize(targetW, targetH, { fit: "inside" }).toBuffer();
+      const updatedMeta = await sharp(inputBuf).metadata();
+      lW = updatedMeta.width || targetW;
+      lH = updatedMeta.height || targetH;
+    }
+
+    finalLeft = Math.max(0, Math.min(plateW - lW, finalLeft));
+    finalTop = Math.max(0, Math.min(plateH - lH, finalTop));
+
+    safeCompositeLayers.push({
+      input: inputBuf,
+      left: finalLeft,
+      top: finalTop,
+      blend: layer.blend || "over",
+    });
+  }
+
   return sharp(plateBuffer)
-    .composite(compositeLayers)
+    .composite(safeCompositeLayers)
     .jpeg({ quality: 94, mozjpeg: true })
     .toBuffer();
 }
