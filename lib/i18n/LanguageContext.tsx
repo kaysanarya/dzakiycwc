@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useCallback, useSyncExternalStore } from "react";
 import { translations, Language, Translations } from "./translations";
 
 interface LanguageContextType {
@@ -12,27 +12,56 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+const DEFAULT_LANGUAGE: Language = "en";
+
+let listeners: Array<() => void> = [];
+
+function emitChange() {
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+function subscribe(callback: () => void) {
+  listeners = [...listeners, callback];
+  window.addEventListener("storage", callback);
+  return () => {
+    listeners = listeners.filter((l) => l !== callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function getSnapshot(): Language {
+  try {
+    const saved = localStorage.getItem("vellum_language");
+    if (saved === "en" || saved === "id") return saved;
+  } catch {
+    // ignore
+  }
+  return DEFAULT_LANGUAGE;
+}
+
+function getServerSnapshot(): Language {
+  return DEFAULT_LANGUAGE;
+}
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("en");
+  const language = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const setLanguage = useCallback((lang: Language) => {
-    setLanguageState(lang);
     if (typeof window !== "undefined") {
-      try { localStorage.setItem("vellum_language", lang); } catch { /* ignore */ }
+      try {
+        localStorage.setItem("vellum_language", lang);
+        emitChange();
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 
   const toggleLanguage = useCallback(() => {
     setLanguage(language === "en" ? "id" : "en");
   }, [language, setLanguage]);
-
-  // Load from localStorage on mount
-  React.useEffect(() => {
-    try {
-      const saved = localStorage.getItem("vellum_language") as Language | null;
-      if (saved === "en" || saved === "id") setLanguageState(saved);
-    } catch { /* ignore */ }
-  }, []);
 
   const t = translations[language] as Translations;
 
