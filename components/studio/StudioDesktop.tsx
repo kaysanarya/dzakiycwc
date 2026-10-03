@@ -78,13 +78,13 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
   const primarySourceImage = sourceImages[0];
 
   return (
-    <div className="flex-1 flex w-full max-w-[1560px] mx-auto h-[calc(100vh-56px)] overflow-hidden bg-studio-bg text-studio-text select-none">
+    <div className="flex-1 flex w-full max-w-[1560px] mx-auto h-full overflow-hidden bg-studio-bg text-studio-text select-none">
       {/* ========================================================= */}
-      {/* 1. LEFT CONTROL PANEL (320px Sticky)                      */}
+      {/* 1. LEFT CONTROL PANEL (320px Independent Scrollable)     */}
       {/* ========================================================= */}
-      <aside className="w-[320px] min-w-[320px] max-w-[320px] border-r border-studio-border bg-studio-bg flex flex-col h-full shrink-0">
+      <aside className="w-[320px] min-w-[320px] max-w-[320px] border-r border-studio-border bg-studio-bg h-full overflow-y-auto overscroll-contain flex flex-col scrollbar-studio relative shrink-0">
         {/* Scrollable control items */}
-        <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5">
+        <div className="p-3.5 space-y-3.5 flex-1">
           {/* 1. Upload Produk */}
           <div className="card-studio p-3 space-y-2">
             <ProductSourceUpload
@@ -251,7 +251,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
         </div>
 
         {/* Sticky Action Button at bottom */}
-        <div className="p-3 border-t border-studio-border bg-studio-bg/95 sticky bottom-0 z-10">
+        <div className="sticky bottom-0 bg-zinc-950/90 backdrop-blur-sm p-4 border-t border-zinc-800 z-20 mt-auto">
           <button
             type="button"
             id="desktop-main-generate-btn"
@@ -281,7 +281,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
       {/* ========================================================= */}
       {/* 2. CENTER CANVAS (Dominant Result Viewport)               */}
       {/* ========================================================= */}
-      <main className="flex-1 flex flex-col min-h-0 h-full overflow-y-auto p-6 bg-studio-bg">
+      <main className="flex-1 flex flex-col min-h-0 h-full overflow-y-auto overscroll-contain p-6 bg-studio-bg scrollbar-studio">
         {/* Error Notice */}
         {errorMessage && (
           <div className="mb-4 p-3 rounded-xl bg-red-950/60 border border-red-800 text-xs text-red-200 flex items-center justify-between">
@@ -512,7 +512,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
             </div>
 
             {/* History list */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-2.5 scrollbar-studio">
               {historyItems.length === 0 ? (
                 <div className="h-48 flex flex-col items-center justify-center text-center p-4 text-studio-muted">
                   <Clock className="w-6 h-6 mb-2 stroke-[1.5] text-studio-dim" />

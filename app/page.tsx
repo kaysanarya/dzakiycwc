@@ -65,7 +65,7 @@ export default function Home() {
   ]);
 
   return (
-    <div className="min-h-[100dvh] flex flex-col font-sans bg-studio-bg text-studio-text overflow-x-hidden selection:bg-studio-accent/30 selection:text-white">
+    <div className="h-screen max-h-screen flex flex-col font-sans bg-studio-bg text-studio-text overflow-hidden selection:bg-studio-accent/30 selection:text-white">
       {/* Top Header */}
       <Header
         onLoadDemoProduct={session.handleLoadDemoProduct}
@@ -84,12 +84,12 @@ export default function Home() {
       />
 
       {/* MOBILE LAYOUT (<1024px, base 390px, clean down to 360px) */}
-      <div className="block lg:hidden w-full flex-1 flex flex-col min-h-0">
+      <div className="block lg:hidden w-full h-[calc(100vh-3.5rem)] overflow-y-auto overscroll-contain">
         <StudioMobile session={session} />
       </div>
 
       {/* DESKTOP LAYOUT (>=1024px, optimal 1440px) */}
-      <div className="hidden lg:flex w-full flex-1 flex-col min-h-0">
+      <div className="hidden lg:flex w-full h-[calc(100vh-3.5rem)] overflow-hidden flex">
         <StudioDesktop session={session} />
       </div>
     </div>
