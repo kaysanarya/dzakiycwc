@@ -275,7 +275,7 @@ export async function prepareImageBuffer(
 
   if (pngBuf.byteLength > MAX_BUFFER_BYTES) {
     const meta = await sharp(pngBuf).metadata();
-    let currentMax = Math.max(meta.width ?? MAX_LONGEST_SIDE, meta.height ?? MAX_LONGEST_SIDE);
+    const currentMax = Math.max(meta.width ?? MAX_LONGEST_SIDE, meta.height ?? MAX_LONGEST_SIDE);
     let targetSide = Math.min(MAX_LONGEST_SIDE, currentMax);
 
     while (targetSide >= 256) {
