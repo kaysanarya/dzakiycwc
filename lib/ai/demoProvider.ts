@@ -129,6 +129,8 @@ export class DemoAIProvider implements AIProvider {
           const compositeBuffer = await compositeProductOnPlate({
             plateBuffer,
             productCutoutBuffer,
+            cameraAngle: input.direction.cameraAngle,
+            variationIndex: i,
           });
           finalImageUrl = `data:image/jpeg;base64,${compositeBuffer.toString("base64")}`;
         }

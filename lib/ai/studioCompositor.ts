@@ -6,6 +6,8 @@ export interface CompositeProductOptions {
   productCutoutBuffer: Buffer;
   targetWidth?: number;
   targetHeight?: number;
+  cameraAngle?: string;
+  variationIndex?: number;
 }
 
 export interface ProceduralPlateOptions {
@@ -171,12 +173,48 @@ async function generateMultiLayerShadows(
   scaledW: number,
   scaledH: number,
   plateW: number,
-  plateH: number
+  plateH: number,
+  cameraAngle: string = "three_quarter"
 ): Promise<{
   contactShadow: { input: Buffer; topOffset: number };
   castShadow: { input: Buffer; leftOffset: number; topOffset: number };
   ambientPenumbra: { input: Buffer; topOffset: number };
 }> {
+  // If top-down flatlay, generate a 360-degree soft drop-shadow underneath the product
+  if (cameraAngle === "top") {
+    const dropW = Math.min(plateW, Math.max(32, Math.round(scaledW * 1.12)));
+    const dropH = Math.min(plateH, Math.max(32, Math.round(scaledH * 1.12)));
+    const dropSvg = `
+      <svg width="${dropW}" height="${dropH}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="flatlayDrop" cx="50%" cy="50%" rx="50%" ry="50%">
+            <stop offset="0%" stop-color="#0a0c10" stop-opacity="0.50" />
+            <stop offset="55%" stop-color="#141720" stop-opacity="0.22" />
+            <stop offset="85%" stop-color="#1e222e" stop-opacity="0.05" />
+            <stop offset="100%" stop-color="#1e222e" stop-opacity="0.0" />
+          </radialGradient>
+        </defs>
+        <ellipse cx="${dropW / 2}" cy="${dropH / 2}" rx="${dropW * 0.47}" ry="${dropH * 0.47}" fill="url(#flatlayDrop)" />
+      </svg>
+    `;
+    const dropBuf = await sharp(Buffer.from(dropSvg)).blur(14).png().toBuffer();
+    const contactDropBuf = await sharp(Buffer.from(dropSvg)).blur(4).png().toBuffer();
+    return {
+      contactShadow: {
+        input: contactDropBuf,
+        topOffset: -Math.round(dropH * 0.5),
+      },
+      castShadow: {
+        input: dropBuf,
+        leftOffset: 0,
+        topOffset: -Math.round(dropH * 0.5),
+      },
+      ambientPenumbra: {
+        input: dropBuf,
+        topOffset: -Math.round(dropH * 0.5),
+      },
+    };
+  }
   // 1. Contact shadow: ultra-tight, dark grounding band (0–3px perceived height)
   // Strictly bounded to plate dimensions
   const contactW = Math.min(plateW, Math.max(16, Math.round(scaledW * 0.92)));
@@ -200,10 +238,28 @@ async function generateMultiLayerShadows(
     .png()
     .toBuffer();
 
-  // 2. Directional cast shadow: diffused graduated shadow extending softly to the right/front
-  // Strictly bounded to plate dimensions
-  const castW = Math.min(plateW, Math.max(24, Math.round(scaledW * 1.15)));
-  const castH = Math.min(plateH, Math.max(12, Math.round(scaledH * 0.16)));
+  // 2. Directional cast shadow: adjusted for low_angle, high_angle, three_quarter
+  let castMultW = 1.15;
+  let castMultH = 0.16;
+  let castBlur = 8.5;
+  let castLeftRatio = 0.05;
+
+  if (cameraAngle === "low_angle") {
+    castMultW = 1.30;
+    castMultH = 0.28; // elongated shadow stretching back
+    castBlur = 12;
+    castLeftRatio = 0.07;
+  } else if (cameraAngle === "high_angle") {
+    castMultW = 1.05;
+    castMultH = 0.11; // compact, tight shadow directly below
+    castBlur = 5.5;
+    castLeftRatio = 0.02;
+  } else if (cameraAngle === "three_quarter") {
+    castLeftRatio = 0.08; // dynamic angled shadow
+  }
+
+  const castW = Math.min(plateW, Math.max(24, Math.round(scaledW * castMultW)));
+  const castH = Math.min(plateH, Math.max(12, Math.round(scaledH * castMultH)));
 
   const castSvg = `
     <svg width="${castW}" height="${castH}" xmlns="http://www.w3.org/2000/svg">
@@ -219,7 +275,7 @@ async function generateMultiLayerShadows(
     </svg>
   `;
   const castShadowBuf = await sharp(Buffer.from(castSvg))
-    .blur(8.5)
+    .blur(castBlur)
     .png()
     .toBuffer();
 
@@ -253,7 +309,7 @@ async function generateMultiLayerShadows(
     },
     castShadow: {
       input: castShadowBuf,
-      leftOffset: Math.round(scaledW * 0.05),
+      leftOffset: Math.round(scaledW * castLeftRatio),
       topOffset: -Math.round(castH * 0.25),
     },
     ambientPenumbra: {
@@ -314,20 +370,14 @@ async function applyAmbientColorBounce(
  * 4. Product and all composite layers NEVER exceed the plate width or height.
  */
 export async function compositeProductOnPlate(options: CompositeProductOptions): Promise<Buffer> {
-  const { plateBuffer, productCutoutBuffer } = options;
+  const { plateBuffer, productCutoutBuffer, cameraAngle = "three_quarter", variationIndex = 0 } = options;
 
   // 1. Inspect plate dimensions
   const plateMeta = await sharp(plateBuffer).metadata();
   const plateW = plateMeta.width || 1024;
   const plateH = plateMeta.height || 1024;
 
-  // 2. Pre-resize product cutout automatically using Sharp
-  // Skalakan gambar produk agar muat proporsional di dalam kanvas latar studio
-  // (gunakan fit: 'inside' dengan ukuran maksimal sekitar 75–80% dari dimensi plat latar).
-  const maxProductW = Math.max(64, Math.round(plateW * 0.78));
-  const maxProductH = Math.max(64, Math.round(plateH * 0.78));
-
-  // Safely trim transparent borders first (if present)
+  // 2. Pre-process cutout: trim transparent borders first
   let preprocessedCutout = productCutoutBuffer;
   try {
     preprocessedCutout = await sharp(productCutoutBuffer)
@@ -337,6 +387,63 @@ export async function compositeProductOnPlate(options: CompositeProductOptions):
   } catch {
     preprocessedCutout = await sharp(productCutoutBuffer).ensureAlpha().toBuffer();
   }
+
+  // 3. Dynamic Rotation / Angle Transformation based on cameraAngle and variationIndex
+  let rotationDeg = 0;
+  if (cameraAngle === "top") {
+    // In commercial flatlay photography, items are styled diagonally on the flat surface
+    const flatlayAngles = [-16, 15, -24, 20];
+    rotationDeg = flatlayAngles[variationIndex % flatlayAngles.length];
+  } else if (cameraAngle === "three_quarter") {
+    // Dynamic commercial hero tilt
+    const threeQuarterTilts = [-4, 3, -6, 2];
+    rotationDeg = threeQuarterTilts[variationIndex % threeQuarterTilts.length];
+  } else if (cameraAngle === "low_angle") {
+    // Slight upward angle slant
+    const lowTilts = [-2, 2, -3, 1];
+    rotationDeg = lowTilts[variationIndex % lowTilts.length];
+  } else if (cameraAngle === "high_angle") {
+    const highTilts = [3, -3, 4, -2];
+    rotationDeg = highTilts[variationIndex % highTilts.length];
+  } else {
+    // side, front: clean level alignment, with micro-variation for multiple outputs
+    const subtleTilts = [0, 1.5, -1.5, 0];
+    rotationDeg = subtleTilts[variationIndex % subtleTilts.length];
+  }
+
+  if (rotationDeg !== 0) {
+    try {
+      preprocessedCutout = await sharp(preprocessedCutout)
+        .rotate(rotationDeg, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .png()
+        .toBuffer();
+    } catch (e) {
+      console.warn("[compositor] Rotation skipped:", e);
+    }
+  }
+
+  // 4. Dynamic Scale Factor based on cameraAngle & distance
+  let scaleFactor = 0.78;
+  if (cameraAngle === "macro_detail") {
+    scaleFactor = 0.95; // Macro close-up
+  } else if (cameraAngle === "low_angle") {
+    scaleFactor = 0.84; // Towering heroic scale
+  } else if (cameraAngle === "high_angle") {
+    scaleFactor = 0.69; // Looking down perspective
+  } else if (cameraAngle === "top") {
+    scaleFactor = 0.72; // Flatlay margins
+  } else if (cameraAngle === "front") {
+    scaleFactor = 0.75; // Symmetrical frontal framing
+  } else if (cameraAngle === "side") {
+    scaleFactor = 0.80; // Side profile width
+  }
+
+  // Subtle variation scale offset (±2%)
+  const varScaleOffset = (variationIndex % 2 === 1 ? -0.02 : 0.02) * (variationIndex > 0 ? 1 : 0);
+  scaleFactor = Math.min(0.96, Math.max(0.60, scaleFactor + varScaleOffset));
+
+  const maxProductW = Math.max(64, Math.round(plateW * scaleFactor));
+  const maxProductH = Math.max(64, Math.round(plateH * scaleFactor));
 
   // Otomatis resize proporsional dengan fit: 'inside' sehingga tidak pernah melebihi plat
   const resizedProductResult = await sharp(preprocessedCutout)
@@ -348,7 +455,6 @@ export async function compositeProductOnPlate(options: CompositeProductOptions):
     .png()
     .toBuffer({ resolveWithObject: true });
 
-  // Pastikan dimensi gambar produk yang akan ditempel tidak pernah melebihi lebar/tinggi gambar latar
   const scaledW = Math.min(plateW, Math.max(16, resizedProductResult.info.width));
   const scaledH = Math.min(plateH, Math.max(16, resizedProductResult.info.height));
   let productResized = resizedProductResult.data;
@@ -361,27 +467,41 @@ export async function compositeProductOnPlate(options: CompositeProductOptions):
       .toBuffer();
   }
 
-  // 3. Fixed anchor positioning:
-  // Center horizontally; bottom edge touches the ground baseline around 76% down the frame
+  // 5. Dynamic Positioning:
+  // Center horizontally; vertical placement depends on camera angle
   const posX = Math.max(0, Math.min(plateW - scaledW, Math.round((plateW - scaledW) / 2)));
-  const baselineY = Math.round(plateH * 0.76);
-  let posY = baselineY - scaledH;
+  const minTop = Math.round(plateH * 0.06);
 
-  // Ensure top boundary has breathing space
-  const minTop = Math.round(plateH * 0.08);
-  if (posY < minTop) {
-    posY = minTop;
+  let posY: number;
+  if (cameraAngle === "top") {
+    // Flatlay is centered on the flat surface/tabletop
+    posY = Math.max(minTop, Math.round((plateH - scaledH) / 2));
+  } else if (cameraAngle === "low_angle") {
+    // Worm's eye view baseline is dropped lower
+    const baselineY = Math.round(plateH * 0.83);
+    posY = Math.max(minTop, baselineY - scaledH);
+  } else if (cameraAngle === "high_angle") {
+    // High angle baseline is higher up to reveal floor
+    const baselineY = Math.round(plateH * 0.69);
+    posY = Math.max(minTop, baselineY - scaledH);
+  } else if (cameraAngle === "macro_detail") {
+    // Macro zoom is centered
+    posY = Math.max(minTop, Math.round((plateH - scaledH) / 2));
+  } else {
+    // Standard baseline (around 76% down the frame)
+    const baselineY = Math.round(plateH * 0.76);
+    posY = Math.max(minTop, baselineY - scaledH);
   }
-  // Ensure product doesn't exceed bottom boundary
+
   if (posY + scaledH > plateH) {
     posY = Math.max(0, plateH - scaledH);
   }
 
-  // 4. Apply subtle warm ambient color bounce to ground product into studio scene
+  // 6. Apply subtle warm ambient color bounce to ground product into studio scene
   const productIntegrated = await applyAmbientColorBounce(productResized, scaledW, scaledH);
 
-  // 5. Generate multi-layer shadows (Ambient Penumbra -> Cast Shadow -> Contact Shadow)
-  const shadows = await generateMultiLayerShadows(scaledW, scaledH, plateW, plateH);
+  // 7. Generate multi-layer shadows adapted to cameraAngle
+  const shadows = await generateMultiLayerShadows(scaledW, scaledH, plateW, plateH, cameraAngle);
   const shadowCenterBottomY = posY + scaledH;
 
   const penumbraMeta = await sharp(shadows.ambientPenumbra.input).metadata();

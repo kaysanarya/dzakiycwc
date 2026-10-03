@@ -125,6 +125,8 @@ export class ReplicateAIProvider implements AIProvider {
                 const compositeBuffer = await compositeProductOnPlate({
                   plateBuffer,
                   productCutoutBuffer,
+                  cameraAngle: input.direction.cameraAngle,
+                  variationIndex: index,
                 });
                 finalImg = `data:image/jpeg;base64,${compositeBuffer.toString("base64")}`;
               }
