@@ -61,6 +61,17 @@ async function resizeToFit(
  * Throws AiPipelineError("removeBackground") if ALL strategies fail.
  * Never returns the original image as a fallback.
  */
+/**
+ * Strips background from product image, returning a clean transparent PNG Buffer.
+ * Supports:
+ * 1. BiRefNet / RemBG via Replicate (if key available)
+ * 2. Stability AI Background Removal API (if key available)
+ * 3. High-precision server-side Sharp edge-aware alpha extractor (zero-dependency fallback)
+ *
+ * Throws AiPipelineError("removeBackground") with message
+ * "latar foto terlalu rumit, upload foto berlatar polos" if all strategies fail
+ * or if mask ratio is invalid (less than 5% or greater than 95% product area).
+ */
 export async function removeBackground(params: RemoveBackgroundParams): Promise<Buffer> {
   const { imageUrlOrBase64, stabilityApiKey, replicateApiKey } = params;
 
@@ -71,14 +82,96 @@ export async function removeBackground(params: RemoveBackgroundParams): Promise<
   }
   const inputBuffer = Buffer.from(rawBase64, "base64");
 
-  let lastErrorMsg = "All background removal strategies failed.";
+  // Helper to validate cutout mask viability
+  const isCutoutViable = async (buf: Buffer): Promise<boolean> => {
+    try {
+      const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      const total = info.width * info.height;
+      let transparent = 0;
+      for (let i = 0; i < total; i++) {
+        if (data[i * 4 + 3] < 128) transparent++;
+      }
+      const ratio = transparent / total;
+      // Product must be between 5% and 95% of frame (i.e. transparentRatio 0.05 to 0.95)
+      return ratio >= 0.05 && ratio <= 0.95;
+    } catch {
+      return false;
+    }
+  };
 
-  // Strategy 1: Stability AI Background Removal (if key available)
+  // Strategy 1: BiRefNet / RemBG via Replicate (if key available)
+  const repKey = replicateApiKey;
+  if (repKey && repKey.trim().length > 5) {
+    const modelsToTry = [
+      "lucataco/birefnet",
+      "zhengpeng7/birefnet",
+      "cjwbw/rembg",
+    ];
+
+    const base64Clean = rawBase64.replace(/^data:[^,]+,/, "");
+    const dataUri = `data:image/png;base64,${base64Clean}`;
+
+    for (const modelName of modelsToTry) {
+      try {
+        const res = await fetch(`https://api.replicate.com/v1/models/${modelName}/predictions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${repKey.trim()}`,
+            "Content-Type": "application/json",
+            Prefer: "wait",
+          },
+          signal: AbortSignal.timeout(35_000),
+          body: JSON.stringify({ input: { image: dataUri } }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          let outUrl: string | undefined = Array.isArray(data.output) ? data.output[0] : data.output;
+
+          if (!outUrl && data.urls?.get) {
+            let attempts = 0;
+            while (!outUrl && attempts < 10) {
+              await new Promise((r) => setTimeout(r, 1500));
+              const poll = await fetch(data.urls.get, {
+                headers: { Authorization: `Bearer ${repKey.trim()}` },
+                signal: AbortSignal.timeout(10_000),
+              });
+              if (poll.ok) {
+                const pollJson = await poll.json();
+                if (pollJson.status === "succeeded") {
+                  outUrl = Array.isArray(pollJson.output) ? pollJson.output[0] : pollJson.output;
+                  break;
+                } else if (pollJson.status === "failed") {
+                  break;
+                }
+              }
+              attempts++;
+            }
+          }
+
+          if (outUrl && typeof outUrl === "string") {
+            const fetchImg = await fetch(outUrl);
+            if (fetchImg.ok) {
+              const imgBuf = Buffer.from(await fetchImg.arrayBuffer());
+              const candidate = await forcePngBuffer(imgBuf);
+              if (await isCutoutViable(candidate)) {
+                return candidate;
+              }
+              console.warn(`[removeBackground] Replicate model ${modelName} produced non-viable mask ratio`);
+            }
+          }
+        }
+      } catch (repErr) {
+        console.warn(`[removeBackground] Replicate ${modelName} error:`, repErr);
+      }
+    }
+  }
+
+  // Strategy 2: Stability AI Background Removal (if key available)
   const stabKey = stabilityApiKey;
   if (stabKey && stabKey.trim().length > 5) {
     try {
       const formData = new FormData();
-      // Always send as image/png — mimeType from upload is irrelevant to the BG removal API
       const blob = new Blob([new Uint8Array(inputBuffer)], { type: "image/png" });
       formData.append("image", blob, "input.png");
       formData.append("output_format", "png");
@@ -96,99 +189,30 @@ export async function removeBackground(params: RemoveBackgroundParams): Promise<
       if (res.ok) {
         const arrayBuf = await res.arrayBuffer();
         const rawBuf = Buffer.from(arrayBuf);
-        // Force RGBA PNG to guarantee consistent channel count
-        return await forcePngBuffer(rawBuf);
-      } else {
-        const errText = await res.text().catch(() => "");
-        lastErrorMsg = `Stability remove-background HTTP ${res.status}: ${errText.slice(0, 200)}`;
-        console.error(`[removeBackground] Stability failed (${res.status}): ${errText.slice(0, 200)}`);
+        const candidate = await forcePngBuffer(rawBuf);
+        if (await isCutoutViable(candidate)) {
+          return candidate;
+        }
+        console.warn("[removeBackground] Stability produce non-viable mask ratio");
       }
     } catch (stabErr) {
-      const msg = stabErr instanceof Error ? stabErr.message : String(stabErr);
-      lastErrorMsg = `Stability remove-background error: ${msg.slice(0, 200)}`;
-      console.error(`[removeBackground] Stability exception: ${msg.slice(0, 200)}`);
+      console.warn("[removeBackground] Stability error:", stabErr);
     }
   }
 
-  // Strategy 2: Replicate rembg neural model (if key available)
-  const repKey = replicateApiKey;
-  if (repKey && repKey.trim().length > 5) {
-    try {
-      // Replicate accepts data URI — build it with exactly one prefix
-      const base64Clean = rawBase64.replace(/^data:[^,]+,/, "");
-      const dataUri = `data:image/png;base64,${base64Clean}`;
-
-      const res = await fetch("https://api.replicate.com/v1/models/cjwbw/rembg/predictions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${repKey.trim()}`,
-          "Content-Type": "application/json",
-          Prefer: "wait",
-        },
-        signal: AbortSignal.timeout(30_000),
-        body: JSON.stringify({
-          input: { image: dataUri },
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        let outUrl: string | undefined =
-          Array.isArray(data.output) ? data.output[0] : data.output;
-
-        if (!outUrl && data.urls?.get) {
-          let attempts = 0;
-          while (!outUrl && attempts < 10) {
-            await new Promise((r) => setTimeout(r, 1500));
-            const poll = await fetch(data.urls.get, {
-              headers: { Authorization: `Bearer ${repKey.trim()}` },
-              signal: AbortSignal.timeout(10_000),
-            });
-            if (poll.ok) {
-              const pollJson = await poll.json();
-              if (pollJson.status === "succeeded") {
-                outUrl = Array.isArray(pollJson.output) ? pollJson.output[0] : pollJson.output;
-                break;
-              } else if (pollJson.status === "failed") {
-                break;
-              }
-            }
-            attempts++;
-          }
-        }
-
-        if (outUrl && typeof outUrl === "string") {
-          const fetchImg = await fetch(outUrl);
-          if (fetchImg.ok) {
-            const imgBuf = Buffer.from(await fetchImg.arrayBuffer());
-            return await forcePngBuffer(imgBuf);
-          }
-        }
-      } else {
-        const errText = await res.text().catch(() => "");
-        lastErrorMsg = `Replicate rembg HTTP ${res.status}: ${errText.slice(0, 200)}`;
-        console.error(`[removeBackground] Replicate failed (${res.status}): ${errText.slice(0, 200)}`);
-      }
-    } catch (repErr) {
-      const msg = repErr instanceof Error ? repErr.message : String(repErr);
-      lastErrorMsg = `Replicate rembg error: ${msg.slice(0, 200)}`;
-      console.error(`[removeBackground] Replicate exception: ${msg.slice(0, 200)}`);
-    }
-  }
-
-  // Strategy 3: High-precision edge-aware Alpha Extractor via Sharp
-  // Handles standard catalog backgrounds (pure white, off-white, light gray cyclorama)
+  // Strategy 3: Server-side Edge-Aware Sharp Alpha Extractor (zero-dependency fallback)
   try {
-    return await extractBackgroundWithSharp(inputBuffer);
+    const candidate = await extractBackgroundWithSharp(inputBuffer);
+    if (await isCutoutViable(candidate)) {
+      return candidate;
+    }
   } catch (sharpErr) {
-    const msg = sharpErr instanceof Error ? sharpErr.message : String(sharpErr);
-    lastErrorMsg = `Sharp extractor error: ${msg.slice(0, 200)}`;
-    console.error(`[removeBackground] Sharp extractor failed: ${msg.slice(0, 200)}`);
+    console.warn("[removeBackground] Sharp extractor error:", sharpErr);
   }
 
-  // All strategies failed — throw instead of returning original image
+  // All strategies failed or background too complex — throw clear user-facing error
   throw new AiPipelineError(
-    `Background removal failed: ${lastErrorMsg.slice(0, 300)}`,
+    "latar foto terlalu rumit, upload foto berlatar polos",
     "removeBackground"
   );
 }
@@ -196,6 +220,7 @@ export async function removeBackground(params: RemoveBackgroundParams): Promise<
 /**
  * Server-side Edge-Aware Chroma & Flood-fill Alpha Extraction.
  * Removes seamless studio white/neutral background and produces a feathered transparent PNG.
+ * Rejects non-uniform backgrounds where corner variance is high.
  */
 async function extractBackgroundWithSharp(inputBuffer: Buffer): Promise<Buffer> {
   const image = sharp(inputBuffer).ensureAlpha();
@@ -215,15 +240,35 @@ async function extractBackgroundWithSharp(inputBuffer: Buffer): Promise<Buffer> 
   ];
 
   let sumR = 0, sumG = 0, sumB = 0;
+  const samples: Array<[number, number, number]> = [];
   for (const [sx, sy] of samplePoints) {
     const idx = (sy * width + sx) * 4;
-    sumR += data[idx];
-    sumG += data[idx + 1];
-    sumB += data[idx + 2];
+    const r = data[idx];
+    const g = data[idx + 1];
+    const b = data[idx + 2];
+    samples.push([r, g, b]);
+    sumR += r;
+    sumG += g;
+    sumB += b;
   }
   const bgR = sumR / samplePoints.length;
   const bgG = sumG / samplePoints.length;
   const bgB = sumB / samplePoints.length;
+
+  // Check sample variance across corners. If high, background is complex (wood, room, outdoors)
+  let varianceSum = 0;
+  for (const [r, g, b] of samples) {
+    varianceSum += (r - bgR) ** 2 + (g - bgG) ** 2 + (b - bgB) ** 2;
+  }
+  const stdDev = Math.sqrt(varianceSum / samplePoints.length);
+
+  // If standard deviation between sample points > 28, the perimeter has distinct colors (complex background)
+  if (stdDev > 28) {
+    throw new AiPipelineError(
+      "latar foto terlalu rumit, upload foto berlatar polos",
+      "removeBackground"
+    );
+  }
 
   // Adaptive threshold based on background brightness
   const isLightBg = bgR > 210 && bgG > 210 && bgB > 210;
@@ -330,19 +375,11 @@ export async function generateInpaintingMask(
 
   const transparentRatio = transparentCount / totalPixels;
 
-  // Validate: mask must have meaningful transparent area
-  if (transparentRatio < 0.01) {
+  // Validate: mask must have meaningful product subject area (5% to 95%)
+  if (transparentRatio < 0.05 || transparentRatio > 0.95) {
     throw new AiPipelineError(
-      `Mask generation aborted: transparent pixel ratio is ${(transparentRatio * 100).toFixed(2)}% (< 1%). ` +
-        "The image appears fully opaque — background removal may have failed or the image has no transparent areas.",
-      "mask"
-    );
-  }
-  if (transparentRatio > 0.99) {
-    throw new AiPipelineError(
-      `Mask generation aborted: transparent pixel ratio is ${(transparentRatio * 100).toFixed(2)}% (> 99%). ` +
-        "The image appears fully transparent — background removal may have over-removed the product subject.",
-      "mask"
+      "latar foto terlalu rumit, upload foto berlatar polos",
+      "removeBackground"
     );
   }
 
