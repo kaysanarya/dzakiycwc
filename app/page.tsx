@@ -862,6 +862,7 @@ export default function Home() {
               <CameraSettings
                 direction={direction}
                 onChangeDirection={setDirection}
+                activeProvider={apiCredentials?.apiKey ? apiCredentials.provider : undefined}
               />
 
               {/* SECTION 4: PRODUCT LOCK */}

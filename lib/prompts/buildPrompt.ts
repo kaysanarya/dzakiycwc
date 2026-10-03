@@ -248,13 +248,24 @@ export function buildBackgroundPlatePrompt(params: {
     bgSetting = direction.customBackground;
   }
 
-  const angles = [
-    "front eye-level commercial studio perspective",
-    "three-quarter angle studio perspective",
-    "low-angle architectural studio elevation",
-    "top-down 45-degree elevated studio perspective",
-  ];
-  const angleText = angles[variationIndex % angles.length];
+  const angleMap: Record<string, string> = {
+    front: "straight-on front eye-level commercial studio perspective",
+    three_quarter: "hero three-quarter perspective studio view",
+    side: "clean horizontal side profile elevation view",
+    top: "overhead 90-degree top-down flatlay perspective",
+    low_angle: "dramatic dynamic low-angle upward hero elevation",
+    high_angle: "elevated 45-degree high-angle studio perspective",
+  };
+  let angleText = angleMap[direction.cameraAngle];
+  if (!angleText || direction.cameraAngle === "copy_reference") {
+    const varied = [
+      "hero three-quarter perspective studio view",
+      "straight-on front eye-level commercial studio perspective",
+      "dramatic dynamic low-angle upward hero elevation",
+      "overhead 45-degree top-down flatlay perspective",
+    ];
+    angleText = varied[variationIndex % varied.length];
+  }
 
   // Mandatory requirement: "empty studio scene, no product, no objects on the surface, clear flat surface in the lower center"
   const platePrompt = `empty studio scene, no product, no objects on the surface, clear flat surface in the lower center. Professional commercial studio photography environment, ${bgSetting}, ${angleText}, Hasselblad medium format optical sharpness, photorealistic global illumination, cinematic softbox lighting, pristine clean empty stage ready for product staging.`;
