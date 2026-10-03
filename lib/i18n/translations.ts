@@ -11,6 +11,14 @@ export const translations = {
       history: "History",
       switchToId: "Bahasa Indonesia",
       switchToEn: "English",
+      ownKey: "Own Key",
+      demoQuotaRemaining: "Demo quota: {count} left",
+      demoQuotaExhausted: "Demo quota exhausted (0)",
+    },
+    quota: {
+      exceededTitle: "Daily Demo Quota Reached",
+      exceededMessage: "The daily quota for server demo generation has been reached. Please use your own API Key (BYOK) to continue without limits.",
+      useOwnKey: "Use Own Key",
     },
     page: {
       studioPrinciple: "Studio Principle:",
@@ -254,6 +262,14 @@ export const translations = {
       history: "Riwayat",
       switchToId: "Bahasa Indonesia",
       switchToEn: "English",
+      ownKey: "Key sendiri",
+      demoQuotaRemaining: "Kuota demo: {count} tersisa",
+      demoQuotaExhausted: "Kuota demo habis (0)",
+    },
+    quota: {
+      exceededTitle: "Batas Kuota Demo Harian Tercapai",
+      exceededMessage: "Kuota harian untuk demo server telah habis. Gunakan API Key Anda sendiri (BYOK) untuk melanjutkan tanpa batas pemakaian.",
+      useOwnKey: "Pakai key sendiri",
     },
     page: {
       studioPrinciple: "Prinsip Studio:",

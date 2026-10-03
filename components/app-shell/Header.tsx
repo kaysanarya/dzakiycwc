@@ -12,6 +12,7 @@ interface HeaderProps {
   hasApiKey?: boolean;
   activeProviderName?: string;
   historyCount: number;
+  demoRemaining?: number | null;
 }
 
 export function Header({
@@ -21,6 +22,7 @@ export function Header({
   hasApiKey,
   activeProviderName,
   historyCount,
+  demoRemaining,
 }: HeaderProps) {
   const { t, language, toggleLanguage } = useLanguage();
 
@@ -61,6 +63,7 @@ export function Header({
             <button
               onClick={onOpenApiSettings}
               type="button"
+              id="header-api-key-badge"
               className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/20 transition-all cursor-pointer"
               title={language === "id" ? "Klik untuk ganti API Key / Provider" : "Click to manage API Key / Provider"}
             >
@@ -69,13 +72,34 @@ export function Header({
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
               </span>
               <span className="tracking-wide whitespace-nowrap">
-                {activeProviderName ? `${activeProviderName.toUpperCase()} (AKTIF)` : (language === "id" ? "AI SIAP" : "AI READY")}
+                {t.header.ownKey}
+                {activeProviderName ? ` (${activeProviderName.toUpperCase()})` : ""}
+              </span>
+            </button>
+          ) : typeof demoRemaining === "number" ? (
+            <button
+              onClick={onOpenApiSettings}
+              type="button"
+              id="header-demo-quota-badge"
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
+                demoRemaining > 0
+                  ? "bg-blue-500/15 text-blue-300 border-blue-400/30 hover:bg-blue-500/25"
+                  : "bg-rose-500/15 text-rose-300 border-rose-400/30 hover:bg-rose-500/25"
+              }`}
+              title={language === "id" ? "Klik untuk memasukkan API Key sendiri" : "Click to enter your own API Key"}
+            >
+              <KeyRound className="w-3.5 h-3.5 shrink-0" />
+              <span className="tracking-wide whitespace-nowrap">
+                {demoRemaining > 0
+                  ? t.header.demoQuotaRemaining.replace("{count}", String(demoRemaining))
+                  : t.header.demoQuotaExhausted}
               </span>
             </button>
           ) : (
             <button
               onClick={onOpenApiSettings}
               type="button"
+              id="header-demo-mode-badge"
               className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-300 border border-amber-400/30 hover:bg-amber-500/25 transition-all cursor-pointer"
               title={language === "id" ? "Klik untuk memasukkan API Key agar hasil tidak berupa demo" : "Click to enter API Key for authentic AI generation"}
             >

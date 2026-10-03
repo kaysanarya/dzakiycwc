@@ -37,7 +37,7 @@ import {
   DEMO_OUTPUTS,
 } from "@/lib/ai/demoData";
 
-import { Sparkles, Play, Camera, AlertTriangle, ArrowRight, KeyRound } from "lucide-react";
+import { Sparkles, Play, Camera, AlertTriangle, ArrowRight, KeyRound, X } from "lucide-react";
 import { ApiSettingsModal, type ApiCredentials } from "@/components/api-settings/ApiSettingsModal";
 
 const INITIAL_STEPS: AgentStep[] = [
@@ -141,6 +141,36 @@ export default function Home() {
       return null;
     }
   });
+
+  // Demo Quota Remaining (from x-demo-remaining header and /api/status)
+  const [demoRemaining, setDemoRemaining] = useState<number | null>(null);
+  const [quotaExceededNotice, setQuotaExceededNotice] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetch("/api/status")
+      .then((res) => {
+        const rem = res.headers.get("x-demo-remaining");
+        if (rem !== null) {
+          const parsed = parseInt(rem, 10);
+          if (!Number.isNaN(parsed)) setDemoRemaining(parsed);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (typeof data.demoRemaining === "number") {
+          setDemoRemaining(data.demoRemaining);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const updateDemoRemaining = (res: Response) => {
+    const rem = res.headers.get("x-demo-remaining");
+    if (rem !== null) {
+      const parsed = parseInt(rem, 10);
+      if (!Number.isNaN(parsed)) setDemoRemaining(parsed);
+    }
+  };
 
   const handleSaveCredentials = (creds: ApiCredentials | null, remember?: boolean) => {
     setApiCredentials(creds);
@@ -363,8 +393,14 @@ export default function Home() {
           }),
         });
 
+        updateDemoRemaining(analyzeRes);
+
         if (!analyzeRes.ok) {
           const errData = await analyzeRes.json().catch(() => ({}));
+          if (analyzeRes.status === 429 || errData.code === "DEMO_QUOTA_EXCEEDED") {
+            setQuotaExceededNotice(true);
+            setDemoRemaining(0);
+          }
           throw new Error(errData.error || "Step 1 failed: Raw product visual analysis failed.");
         }
         const analyzeData = await analyzeRes.json();
@@ -440,9 +476,12 @@ export default function Home() {
         }),
       });
 
+      updateDemoRemaining(genRes);
+
       // Note: HTTP 207 (partial success) is treated as ok by fetch — we must check the body
       const genData = await genRes.json().catch(() => ({})) as {
         success?: boolean;
+        code?: string;
         outputs?: GeneratedOutput[];
         failedCount?: number;
         errors?: { stage: string; message: string }[];
@@ -450,6 +489,10 @@ export default function Home() {
       };
 
       if (!genRes.ok || genData.success === false) {
+        if (genRes.status === 429 || genData.code === "DEMO_QUOTA_EXCEEDED") {
+          setQuotaExceededNotice(true);
+          setDemoRemaining(0);
+        }
         const errMsg =
           typeof genData.error === "object" ? genData.error?.message
           : typeof genData.error === "string" ? genData.error
@@ -535,10 +578,16 @@ export default function Home() {
               }),
             });
 
-            const regenData: { success?: boolean; outputs?: GeneratedOutput[]; error?: { message?: string } | string } =
+            updateDemoRemaining(regenRes);
+
+            const regenData: { success?: boolean; code?: string; outputs?: GeneratedOutput[]; error?: { message?: string } | string } =
               await regenRes.json().catch(() => ({}));
 
             if (!regenRes.ok || regenData.success === false) {
+              if (regenRes.status === 429 || regenData.code === "DEMO_QUOTA_EXCEEDED") {
+                setQuotaExceededNotice(true);
+                setDemoRemaining(0);
+              }
               return {
                 ...output,
                 status: "rejected" as const,
@@ -738,6 +787,7 @@ export default function Home() {
         hasApiKey={Boolean(apiCredentials?.apiKey)}
         activeProviderName={apiCredentials?.provider}
         historyCount={historyItems.length}
+        demoRemaining={demoRemaining}
       />
 
       {/* Main Studio Workspace with generous top padding */}
@@ -781,6 +831,43 @@ export default function Home() {
             </button>
           )}
         </div>
+
+        {/* Demo Quota Exceeded Notice with Action Button */}
+        {quotaExceededNotice && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200 shadow-xl backdrop-blur-md">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shrink-0">
+                <KeyRound className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="font-bold text-amber-100 text-sm">{t.quota.exceededTitle}</p>
+                <p className="text-amber-200/80 mt-0.5">{t.quota.exceededMessage}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <button
+                type="button"
+                id="quota-use-own-key-btn"
+                onClick={() => {
+                  setIsApiSettingsOpen(true);
+                  setQuotaExceededNotice(false);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs bg-[#1951fc] hover:bg-[#3781fc] text-white shadow-[0_2px_8px_rgba(25,81,252,0.4)] cursor-pointer active:scale-95 transition-all"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>{t.quota.useOwnKey}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuotaExceededNotice(false)}
+                className="p-1.5 rounded-full text-amber-200/60 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                title={t.page.dismiss}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Global Error Notice */}
         {errorMessage && (
@@ -1039,7 +1126,12 @@ export default function Home() {
       <ApiSettingsModal
         isOpen={isApiSettingsOpen}
         onClose={() => setIsApiSettingsOpen(false)}
-        onSaveCredentials={handleSaveCredentials}
+        onSaveCredentials={(creds, remember) => {
+          handleSaveCredentials(creds, remember);
+          if (creds?.apiKey) {
+            setQuotaExceededNotice(false);
+          }
+        }}
         currentCredentials={apiCredentials}
       />
     </div>
