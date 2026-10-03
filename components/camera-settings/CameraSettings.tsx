@@ -144,7 +144,14 @@ export function CameraSettings({
     try {
       const stored = localStorage.getItem("vellum_studio_presets");
       if (stored) {
-        setSavedPresets(JSON.parse(stored));
+        try {
+          const parsed = JSON.parse(stored);
+          // Mengisi preset yang tersimpan di localStorage pengguna saat pertama kali komponen dimuat di browser
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setSavedPresets(parsed);
+        } catch {
+          // Ignore JSON parse errors for corrupted localStorage entry
+        }
       }
     } catch {
       // Ignore localStorage errors in restricted environments
