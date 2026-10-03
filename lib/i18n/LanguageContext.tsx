@@ -12,7 +12,7 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-const DEFAULT_LANGUAGE: Language = "en";
+const DEFAULT_LANGUAGE: Language = "id";
 
 let listeners: Array<() => void> = [];
 

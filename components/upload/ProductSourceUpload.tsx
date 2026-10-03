@@ -150,43 +150,41 @@ export function ProductSourceUpload({
               fileInputRef.current?.click();
             }
           }}
-          className={`w-full aspect-[4/3] max-h-[360px] border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors select-none ${
+          className={`w-full min-h-[260px] border-2 border-dashed rounded-2xl p-4 sm:p-8 flex flex-col items-center justify-center cursor-pointer transition-colors select-none ${
             dragActive
-              ? "border-zinc-400 bg-zinc-800/40"
-              : "border-zinc-700 hover:border-zinc-500 bg-zinc-900/40 hover:bg-zinc-900/60"
+              ? "border-studio-accent bg-studio-subcard"
+              : "border-studio-border hover:border-studio-default bg-studio-card hover:bg-studio-subcard"
           }`}
         >
-          <div className="w-14 h-14 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 mb-4">
-            <Upload className="w-7 h-7 text-zinc-300" />
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-studio-subcard border border-studio-border flex items-center justify-center text-studio-accent mb-3 sm:mb-4">
+            <Upload className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
 
-          <h2 className="text-base font-semibold text-zinc-100 max-w-md">
+          <h2 className="text-sm sm:text-base font-semibold text-studio-text max-w-md font-heading break-words px-2">
             {language === "id"
-              ? "Unggah foto produk Anda untuk memulai foto studio komersial dengan AI"
-              : "Upload your product photo to begin AI studio photography"}
+              ? "Unggah foto produk asli untuk memulai foto studio"
+              : "Upload authentic product photo to begin studio shoot"}
           </h2>
 
-          <p className="text-xs text-zinc-400 mt-2 max-w-sm">
+          <p className="text-xs text-studio-muted mt-1.5 max-w-sm px-2">
             {language === "id"
-              ? "Tarik dan lepaskan file ke sini, atau klik untuk memilih file dari perangkat Anda."
-              : "Drag and drop files here, or click to browse from your device."}
+              ? "Tarik file ke sini, atau klik untuk memilih file."
+              : "Drag and drop files here, or click to browse."}
           </p>
 
-          <div className="mt-5 inline-flex items-center gap-2 btn-primary px-5 py-2.5 text-xs font-semibold rounded-lg shadow-sm">
+          <div className="mt-4 sm:mt-5 inline-flex items-center gap-2 btn-primary px-4 sm:px-5 py-2.5 text-xs font-semibold rounded-xl shadow-sm min-h-[44px]">
             <Upload className="w-4 h-4" />
             <span>{language === "id" ? "Pilih Foto Produk" : "Select Product Photo"}</span>
           </div>
 
-          <span className="text-[11px] text-zinc-400 mt-4">
-            {language === "id"
-              ? "Mendukung JPG, PNG, atau WEBP hingga 10MB"
-              : "Supports JPG, PNG, or WEBP up to 10MB"}
+          <span className="text-[11px] text-studio-dim mt-3 sm:mt-4 font-mono">
+            JPG, PNG, WEBP • Max 10MB
           </span>
         </div>
 
         {errorMessage && (
-          <div className="mt-4 p-3 rounded-lg bg-red-950/50 border border-red-800 text-xs text-red-300 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
+          <div className="mt-4 p-3 rounded-xl bg-red-950/60 border border-red-800 text-xs text-red-200 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
             <span>{errorMessage}</span>
           </div>
         )}
