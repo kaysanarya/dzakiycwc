@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { UploadedImage } from "@/types";
-import { Upload, X, ShieldAlert, Scissors, Compass } from "lucide-react";
+import { Upload, X, Sparkles, Image as ImageIcon, Compass, Eye } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface ReferenceUploadProps {
@@ -23,6 +23,7 @@ export function ReferenceUpload({
   const [dragActive, setDragActive] = useState(false);
   const [removedBgIds, setRemovedBgIds] = useState<Record<string, boolean>>({});
   const [useAngleIds, setUseAngleIds] = useState<Record<string, boolean>>({});
+  const [previewImage, setPreviewImage] = useState<UploadedImage | null>(null);
 
   const processFiles = (files: FileList | File[]) => {
     const validFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
@@ -80,41 +81,32 @@ export function ReferenceUpload({
   };
 
   return (
-    <div className="space-y-3 pt-2">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-        <div>
-          <h3 className="text-sm font-semibold text-zinc-200 tracking-tight flex items-center gap-2">
-            <span>{language === "id" ? "Foto Referensi (Opsional)" : "Reference Photos (Optional)"}</span>
-            <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
-              Style Only
-            </span>
-          </h3>
-          <p className="text-xs text-zinc-400 mt-0.5 font-normal">
-            {language === "id"
-              ? "Referensi hanya digunakan untuk style fotografi. Identitas produk tetap mengikuti foto mentahan."
-              : "References are used for photography style only. Product identity strictly follows raw photos."}
-          </p>
+    <div className="space-y-2.5 pt-2">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-zinc-200">
+            {language === "id" ? "Foto Referensi" : "Reference Photos"}
+          </label>
+          <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+            {language === "id" ? "Opsional" : "Optional"}
+          </span>
         </div>
-        <span className="text-xs font-mono text-zinc-400 self-start sm:self-auto bg-zinc-900 px-2.5 py-1 rounded border border-zinc-800">
-          {references.length} {language === "id" ? "referensi" : references.length === 1 ? "reference" : "references"}
-        </span>
+        {references.length > 0 && (
+          <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
+            {references.length} {language === "id" ? "referensi" : references.length === 1 ? "ref" : "refs"}
+          </span>
+        )}
       </div>
 
-      {/* Prominent Warning Banner */}
-      <div className="p-3 rounded-lg border border-amber-800/60 bg-amber-950/30 flex items-start gap-2.5 text-xs text-amber-200">
-        <ShieldAlert className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
-        <div className="leading-relaxed">
-          <p className="font-semibold text-amber-200">
-            {language === "id"
-              ? "Referensi hanya memengaruhi arahan fotografi (lighting, angle, background)."
-              : "Reference images influence photography direction only (lighting, angle, background)."}
-          </p>
-          <p className="text-amber-200/80 text-[11px] mt-0.5 font-normal">
-            {language === "id"
-              ? "Identitas produk tetap mengikuti foto mentahan. AI VELLUM tidak akan pernah meminjam bentuk geometri atau komponen dari referensi ini."
-              : "Product identity strictly adheres to raw product images. VELLUM AI will never borrow geometry or parts from references."}
-          </p>
-        </div>
+      {/* Sleek Utilitarian Notice Banner */}
+      <div className="rounded-md border border-zinc-800/90 bg-zinc-900/40 px-3 py-2 flex items-start gap-2.5 text-zinc-400">
+        <Sparkles className="w-3.5 h-3.5 shrink-0 text-zinc-400 mt-0.5" />
+        <p className="text-[11px] leading-relaxed text-zinc-400">
+          {language === "id"
+            ? "Referensi hanya memandu pencahayaan & suasana studio. Fisik produk tetap 100% autentik dari foto mentah."
+            : "References guide studio lighting & backdrop mood only. Product physical identity remains strictly authentic."}
+        </p>
       </div>
 
       {/* Mini Dropzone */}
@@ -124,10 +116,18 @@ export function ReferenceUpload({
         onDragOver={handleDrag}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`border border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors ${dragActive
-            ? "border-zinc-400 bg-zinc-800/40"
-            : "border-zinc-700 hover:border-zinc-500 bg-zinc-900/50 hover:bg-zinc-900"
-          }`}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            fileInputRef.current?.click();
+          }
+        }}
+        className={`border border-dashed rounded-lg py-2.5 px-3 text-center cursor-pointer transition-all ${
+          dragActive
+            ? "border-zinc-400 bg-zinc-800/30"
+            : "border-zinc-800 hover:border-zinc-700 bg-zinc-900/30 hover:bg-zinc-900/60"
+        }`}
       >
         <input
           ref={fileInputRef}
@@ -138,83 +138,156 @@ export function ReferenceUpload({
           onChange={(e) => e.target.files && processFiles(e.target.files)}
         />
         <div className="flex items-center justify-center gap-2 text-xs text-zinc-300">
-          <Upload className="w-3.5 h-3.5 text-zinc-400" />
-          <span className="font-medium">
+          <Upload className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+          <span className="font-medium text-zinc-300">
             {language === "id"
-              ? "Unggah gambar referensi untuk pencahayaan, komposisi, atau background"
-              : "Upload reference images for lighting, composition, or background"}
+              ? "Unggah referensi lighting / background"
+              : "Upload reference for lighting / backdrop"}
           </span>
         </div>
       </div>
 
-      {/* Reference thumbnails with action buttons */}
+      {/* Reference Card List (Vertical, Non-overlapping, Precise Pro Studio Design) */}
       {references.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+        <div className="space-y-2 pt-0.5">
           {references.map((ref) => {
-            const isBgRemoved = Boolean(removedBgIds[ref.id]);
+            const isBgIgnored = Boolean(removedBgIds[ref.id]);
             const isUsingAngle = Boolean(useAngleIds[ref.id]);
 
             return (
               <div
                 key={ref.id}
-                className="card-flat-subtle rounded-lg p-2.5 flex flex-col justify-between hover:border-zinc-700 transition-colors"
+                className="rounded-lg border border-zinc-800/90 bg-zinc-900/40 p-2.5 hover:border-zinc-700/80 transition-all flex flex-col gap-2"
               >
-                <div className="relative aspect-video w-full rounded-md bg-zinc-950 overflow-hidden flex items-center justify-center border border-zinc-800">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={ref.dataUrl}
-                    alt={ref.name}
-                    className={`w-full h-full object-cover transition-all ${isBgRemoved ? "filter contrast-125 brightness-105" : ""
-                      }`}
-                  />
+                {/* Top Row: Thumbnail + Meta + Controls */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    onClick={() => setPreviewImage(ref)}
+                    className="relative w-12 h-12 rounded bg-zinc-950 border border-zinc-800/80 overflow-hidden shrink-0 flex items-center justify-center cursor-pointer group"
+                    title={language === "id" ? "Klik untuk melihat pratinjau" : "Click to preview"}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={ref.dataUrl}
+                      alt={ref.name}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <Eye className="w-3.5 h-3.5 text-zinc-200" />
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-zinc-200 truncate" title={ref.name}>
+                      {ref.name}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-zinc-500 font-mono">
+                        {ref.size ? `${(ref.size / 1024).toFixed(0)} KB` : "Style Ref"}
+                      </span>
+                      <span className="text-zinc-600">•</span>
+                      <span className="text-[10px] text-zinc-400">
+                        {isBgIgnored
+                          ? language === "id" ? "Hanya Cahaya" : "Lighting Only"
+                          : language === "id" ? "Latar & Cahaya" : "Scene & Mood"}
+                      </span>
+                    </div>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => onRemoveReference(ref.id)}
                     aria-label={language === "id" ? "Hapus referensi" : "Remove reference"}
-                    className="absolute top-1.5 right-1.5 p-1 rounded-md bg-zinc-900/80 text-zinc-300 hover:text-white hover:bg-red-600 transition-colors cursor-pointer"
+                    className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-zinc-800/60 transition-colors cursor-pointer shrink-0"
                     title={language === "id" ? "Hapus Referensi" : "Remove Reference"}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
-
-                  {isBgRemoved && (
-                    <div className="absolute top-1.5 left-1.5 bg-zinc-900/90 text-zinc-300 border border-zinc-700 text-[9px] font-mono px-1.5 py-0.5 rounded">
-                      BG Filtered
-                    </div>
-                  )}
                 </div>
 
-                {/* Reference Action Buttons */}
-                <div className="mt-2 flex items-center gap-1.5 justify-between pt-1 border-t border-zinc-800">
+                {/* Bottom Row: 2 Balanced Toggle Pills (Never collides or overflows) */}
+                <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-zinc-800/60">
                   <button
                     type="button"
                     onClick={() => toggleRemoveBg(ref.id)}
-                    className={`flex-1 py-1 px-2 text-[10px] font-medium rounded border transition-colors flex items-center justify-center gap-1 cursor-pointer ${isBgRemoved
-                        ? "bg-zinc-100 text-zinc-950 font-semibold border-zinc-200"
-                        : "btn-secondary"
-                      }`}
-                    title="Abaikan background referensi agar fokus pada pencahayaan produk"
+                    className={`h-7 px-2 text-[11px] font-medium rounded-md border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      !isBgIgnored
+                        ? "bg-zinc-800 text-zinc-100 border-zinc-700 shadow-sm"
+                        : "bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:bg-zinc-900 hover:text-zinc-300"
+                    }`}
+                    title={
+                      language === "id"
+                        ? "Gunakan latar belakang dan tekstur dari foto referensi ini"
+                        : "Use background scene from this reference"
+                    }
                   >
-                    <Scissors className="w-3 h-3" />
-                    <span>{isBgRemoved ? "BG Dihapus ✓" : "Hapus BG"}</span>
+                    <ImageIcon className="w-3 h-3 shrink-0" />
+                    <span className="truncate">
+                      {!isBgIgnored
+                        ? language === "id" ? "Latar Aktif" : "Scene Active"
+                        : language === "id" ? "Abaikan Latar" : "Ignore Scene"}
+                    </span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => toggleUseAngle(ref.id)}
-                    className={`flex-1 py-1 px-2 text-[10px] font-medium rounded border transition-colors flex items-center justify-center gap-1 cursor-pointer ${isUsingAngle
-                        ? "bg-zinc-100 text-zinc-950 font-semibold border-zinc-200"
-                        : "btn-secondary"
-                      }`}
-                    title="Gunakan sudut kamera dari referensi ini"
+                    className={`h-7 px-2 text-[11px] font-medium rounded-md border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      isUsingAngle
+                        ? "bg-zinc-800 text-zinc-100 border-zinc-700 shadow-sm"
+                        : "bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:bg-zinc-900 hover:text-zinc-300"
+                    }`}
+                    title={
+                      language === "id"
+                        ? "Gunakan sudut kamera dan elevasi dari referensi ini"
+                        : "Match camera elevation and angle from reference"
+                    }
                   >
-                    <Compass className="w-3 h-3" />
-                    <span>{isUsingAngle ? "Angle Aktif ✓" : "Gunakan Angle"}</span>
+                    <Compass className="w-3 h-3 shrink-0" />
+                    <span className="truncate">
+                      {isUsingAngle
+                        ? language === "id" ? "Angle Aktif" : "Angle Active"
+                        : language === "id" ? "Gunakan Angle" : "Use Angle"}
+                    </span>
                   </button>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Modal Preview */}
+      {previewImage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative max-w-lg w-full bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl p-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-800">
+              <span className="text-xs font-medium text-zinc-200 truncate">
+                {previewImage.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewImage.dataUrl}
+              alt={previewImage.name}
+              className="w-full max-h-[70vh] object-contain rounded-lg bg-zinc-950"
+            />
+          </div>
         </div>
       )}
     </div>
