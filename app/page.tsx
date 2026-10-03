@@ -861,10 +861,29 @@ export default function Home() {
                       <div className="pt-2 border-t border-zinc-800/80">
                         <ReferenceUpload
                           references={referenceImages}
-                          onAddReferences={(newRefs) => setReferenceImages((prev) => [...prev, ...newRefs])}
-                          onRemoveReference={(id) => setReferenceImages((prev) => prev.filter((img) => img.id !== id))}
+                          onAddReferences={(newRefs) => {
+                            setReferenceImages((prev) => [...prev, ...newRefs]);
+                            setDirection((prev) => ({
+                              ...prev,
+                              background: "exact_reference",
+                              cameraAngle: "copy_reference",
+                            }));
+                          }}
+                          onRemoveReference={(id) => {
+                            setReferenceImages((prev) => {
+                              const updated = prev.filter((img) => img.id !== id);
+                              if (updated.length === 0) {
+                                setDirection((d) => ({
+                                  ...d,
+                                  background: "studio_beige",
+                                  cameraAngle: "front",
+                                }));
+                              }
+                              return updated;
+                            });
+                          }}
                           onSetCameraAngleToReference={() => {
-                            setDirection((prev) => ({ ...prev, cameraAngle: "copy_reference" }));
+                            setDirection((prev) => ({ ...prev, cameraAngle: "copy_reference", background: "exact_reference" }));
                           }}
                         />
                       </div>

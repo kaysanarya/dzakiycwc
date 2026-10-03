@@ -102,6 +102,30 @@ export async function generateProceduralPlate(options: ProceduralPlateOptions = 
       <!-- Architectural podium block in lower third -->
       <path d="M ${width * 0.12} ${floorY} L ${width * 0.88} ${floorY} L ${width * 0.82} ${height} L ${width * 0.18} ${height} Z" fill="url(#podiumStone)" />
     `;
+  } else if (backgroundSetting === "exact_reference") {
+    // Elegant neutral textured editorial flat cyclorama / linen mood (seamless natural floor, no artificial circular podium)
+    bgGradientSvg = `
+      <defs>
+        <linearGradient id="refLinenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#F4F1EA" />
+          <stop offset="55%" stop-color="#EAE5DC" />
+          <stop offset="100%" stop-color="#DCD6C8" />
+        </linearGradient>
+        <radialGradient id="refSoftWindow" cx="45%" cy="30%" r="65%">
+          <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.85" />
+          <stop offset="55%" stop-color="#FAF8F5" stop-opacity="0.35" />
+          <stop offset="100%" stop-color="#DCD6C8" stop-opacity="0.0" />
+        </radialGradient>
+        <radialGradient id="refFloorGlow" cx="50%" cy="80%" r="55%">
+          <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.45" />
+          <stop offset="70%" stop-color="#E5DFD4" stop-opacity="0.8" />
+          <stop offset="100%" stop-color="#D0C8B8" stop-opacity="1.0" />
+        </radialGradient>
+      </defs>
+      <rect width="${width}" height="${height}" fill="url(#refLinenGrad)" />
+      <rect width="${width}" height="${height}" fill="url(#refSoftWindow)" />
+      <ellipse cx="${width / 2}" cy="${floorY + 30}" rx="${width * 0.70}" ry="${height * 0.38}" fill="url(#refFloorGlow)" />
+    `;
   } else {
     // Default: Luxury Studio Beige Podium
     bgGradientSvg = `

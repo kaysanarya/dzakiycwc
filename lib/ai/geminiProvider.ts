@@ -174,8 +174,8 @@ Return JSON ONLY:
           ? img.dataUrl.split(",")[1]
           : img.dataUrl;
         return {
-          inline_data: {
-            mime_type: img.type || "image/jpeg",
+          inlineData: {
+            mimeType: img.type || "image/jpeg",
             data: base64Data,
           },
         };

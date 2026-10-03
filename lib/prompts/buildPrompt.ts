@@ -65,7 +65,9 @@ export function buildStructuredPrompt(params: PromptBuildParams): StructuredProm
 
   // 3. Background and Environment
   let backgroundDesc = "Neutral luxury minimalist studio setting";
-  if (direction.background === "studio_beige") {
+  if (referenceAnalysis && direction.background !== "studio_white" && direction.background !== "transparent") {
+    backgroundDesc = `exact lighting and background recreation matching reference: ${referenceAnalysis.backgroundStyle}, lighting: ${referenceAnalysis.lightingDirection}, shadow: ${referenceAnalysis.shadowType}, mood: ${referenceAnalysis.mood || "commercial"}`;
+  } else if (direction.background === "studio_beige") {
     backgroundDesc = "warm neutral beige matte studio podium with soft diffuse ambient gradient, high-end commercial aesthetic";
   } else if (direction.background === "studio_white") {
     backgroundDesc = "pure seamless high-key commercial white studio cyclorama with subtle soft natural ground contact shadow";
@@ -232,7 +234,11 @@ export function buildBackgroundPlatePrompt(params: {
   const { direction, referenceAnalysis, variationIndex = 0 } = params;
 
   let bgSetting = "warm neutral luxury beige commercial studio podium, subtle soft diffuse gradient";
-  if (direction.background === "studio_beige") {
+
+  // Prioritize reference analysis whenever reference is provided and background isn't explicitly set to pure white or transparent
+  if (referenceAnalysis && direction.background !== "studio_white" && direction.background !== "transparent") {
+    bgSetting = `commercial photography set matching reference environment: ${referenceAnalysis.backgroundStyle}, lighting direction: ${referenceAnalysis.lightingDirection}, light quality: ${referenceAnalysis.lightQuality || "soft diffuse"}, mood: ${referenceAnalysis.mood || "commercial"}`;
+  } else if (direction.background === "studio_beige") {
     bgSetting = "warm luxury neutral beige matte commercial studio podium, soft diffuse ambient gradient, architectural podium surface";
   } else if (direction.background === "studio_white") {
     bgSetting = "pure seamless high-key commercial white studio cyclorama with gentle soft ground lighting gradient";
@@ -258,13 +264,17 @@ export function buildBackgroundPlatePrompt(params: {
   };
   let angleText = angleMap[direction.cameraAngle];
   if (!angleText || direction.cameraAngle === "copy_reference") {
-    const varied = [
-      "hero three-quarter perspective studio view",
-      "straight-on front eye-level commercial studio perspective",
-      "dramatic dynamic low-angle upward hero elevation",
-      "overhead 45-degree top-down flatlay perspective",
-    ];
-    angleText = varied[variationIndex % varied.length];
+    if (referenceAnalysis?.framingComposition) {
+      angleText = `${referenceAnalysis.framingComposition}, perspective matching reference lighting and elevation`;
+    } else {
+      const varied = [
+        "hero three-quarter perspective studio view",
+        "straight-on front eye-level commercial studio perspective",
+        "dramatic dynamic low-angle upward hero elevation",
+        "overhead 45-degree top-down flatlay perspective",
+      ];
+      angleText = varied[variationIndex % varied.length];
+    }
   }
 
   // Mandatory requirement: "empty studio scene, no product, no objects on the surface, clear flat surface in the lower center"
