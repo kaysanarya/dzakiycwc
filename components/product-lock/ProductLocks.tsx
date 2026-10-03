@@ -3,6 +3,7 @@
 import React from "react";
 import type { ProductLocks as ProductLocksType } from "@/types";
 import { ShieldCheck } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface ProductLocksProps {
   locks: ProductLocksType;
@@ -10,6 +11,7 @@ interface ProductLocksProps {
 }
 
 export function ProductLocks({ locks, onChangeLocks }: ProductLocksProps) {
+  const { t, language } = useLanguage();
   const isPreserved = locks.preserveProductDetails ?? true;
 
   return (
@@ -29,14 +31,14 @@ export function ProductLocks({ locks, onChangeLocks }: ProductLocksProps) {
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[#3781fc] shrink-0" />
             <span className="font-bold text-white text-xs sm:text-sm">
-              Pertahankan detail produk
+              {t.productLocks.preserveDetails}
             </span>
             <span className="text-[10px] font-extrabold tracking-wider text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/40">
-              AKTIF
+              {language === "id" ? "AKTIF" : "ACTIVE"}
             </span>
           </div>
           <p className="text-white/70 text-xs mt-1 leading-relaxed font-medium">
-            Produk ditempel dari foto aslinya, bentuk dan warna tidak diubah AI.
+            {t.productLocks.desc}
           </p>
         </div>
       </label>
