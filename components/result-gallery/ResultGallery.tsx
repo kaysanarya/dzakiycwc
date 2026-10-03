@@ -228,7 +228,7 @@ export function ResultGallery({
     );
   };
 
-  const primarySourceUrl = sourceImages[0]?.dataUrl || "/demo/footwear-hero.svg";
+  const primarySourceUrl = sourceImages[0]?.dataUrl || "";
 
   return (
     <div className="space-y-4 pt-4">
