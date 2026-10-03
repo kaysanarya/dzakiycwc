@@ -43,9 +43,7 @@ export function getAIProvider(options?: ProviderOptions): AIProvider {
       : rawVision;
 
     const rawImage = process.env.AI_IMAGE_MODEL?.trim();
-    const imageModel = (!rawImage || rawImage.includes("imagen") || rawImage.includes("2.0"))
-      ? "gemini-3.1-flash-image"
-      : rawImage;
+    const imageModel = rawImage || "imagen-3.0-generate-002";
 
     const rawValidation = process.env.AI_VALIDATION_MODEL?.trim();
     const validationModel = (!rawValidation || rawValidation.includes("2.0") || rawValidation.includes("1.5"))

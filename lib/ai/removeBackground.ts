@@ -75,12 +75,20 @@ async function resizeToFit(
 export async function removeBackground(params: RemoveBackgroundParams): Promise<Buffer> {
   const { imageUrlOrBase64, stabilityApiKey, replicateApiKey } = params;
 
-  // Extract raw base64 buffer
-  let rawBase64 = imageUrlOrBase64;
-  if (rawBase64.includes(",")) {
-    rawBase64 = rawBase64.split(",")[1];
+  // Extract buffer from data URL or base64 string
+  let inputBuffer: Buffer;
+  if (imageUrlOrBase64.startsWith("data:")) {
+    const commaIdx = imageUrlOrBase64.indexOf(",");
+    const header = imageUrlOrBase64.slice(0, commaIdx);
+    const body = imageUrlOrBase64.slice(commaIdx + 1);
+    if (header.includes(";base64")) {
+      inputBuffer = Buffer.from(body, "base64");
+    } else {
+      inputBuffer = Buffer.from(decodeURIComponent(body), "utf-8");
+    }
+  } else {
+    inputBuffer = Buffer.from(imageUrlOrBase64, "base64");
   }
-  const inputBuffer = Buffer.from(rawBase64, "base64");
 
   // Helper to validate cutout mask viability
   const isCutoutViable = async (buf: Buffer): Promise<boolean> => {
@@ -92,12 +100,18 @@ export async function removeBackground(params: RemoveBackgroundParams): Promise<
         if (data[i * 4 + 3] < 128) transparent++;
       }
       const ratio = transparent / total;
-      // Product must be between 5% and 95% of frame (i.e. transparentRatio 0.05 to 0.95)
-      return ratio >= 0.05 && ratio <= 0.95;
+      // Product must be between 1% and 99% of frame (i.e. transparentRatio 0.01 to 0.99)
+      return ratio >= 0.01 && ratio <= 0.99;
     } catch {
       return false;
     }
   };
+
+  // If input image is already a clean transparent PNG/cutout, preserve its authentic pixels directly
+  if (await isCutoutViable(inputBuffer)) {
+    console.log("[removeBackground] Input image already has viable transparent alpha cutout, preserving authentic pixels.");
+    return forcePngBuffer(inputBuffer);
+  }
 
   // Strategy 1: BiRefNet / RemBG via Replicate (if key available)
   const repKey = replicateApiKey;
@@ -108,8 +122,7 @@ export async function removeBackground(params: RemoveBackgroundParams): Promise<
       "cjwbw/rembg",
     ];
 
-    const base64Clean = rawBase64.replace(/^data:[^,]+,/, "");
-    const dataUri = `data:image/png;base64,${base64Clean}`;
+    const dataUri = `data:image/png;base64,${inputBuffer.toString("base64")}`;
 
     for (const modelName of modelsToTry) {
       try {

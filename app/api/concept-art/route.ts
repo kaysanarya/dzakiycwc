@@ -132,35 +132,47 @@ async function generateGeminiImagen(
   };
   const ratio = ratioMap[aspectRatio] ?? "1:1";
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      instances: [{ prompt: fullPrompt.slice(0, 2048) }],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: ratio,
-        safetyFilterLevel: "BLOCK_SOME",
-        personGeneration: "ALLOW_ADULT",
-      },
-    }),
-    signal: AbortSignal.timeout(90_000),
-  });
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        instances: [{ prompt: fullPrompt.slice(0, 2048) }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: ratio,
+          safetyFilterLevel: "BLOCK_SOME",
+          personGeneration: "ALLOW_ADULT",
+        },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(`Gemini Imagen error: ${err?.error?.message ?? res.status}`);
+    if (res.ok) {
+      const data = await res.json() as { predictions?: { bytesBase64Encoded?: string; mimeType?: string }[] };
+      const prediction = data?.predictions?.[0];
+      if (prediction?.bytesBase64Encoded) {
+        const bytes = Buffer.from(prediction.bytesBase64Encoded, "base64");
+        const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+        return { buffer, contentType: prediction.mimeType ?? "image/png" };
+      }
+    }
+  } catch (err) {
+    console.warn("[concept-art] Imagen 3 predict skipped or unavailable:", err);
   }
 
-  const data = await res.json() as { predictions?: { bytesBase64Encoded?: string; mimeType?: string }[] };
-  const prediction = data?.predictions?.[0];
-  if (!prediction?.bytesBase64Encoded) throw new Error("No image data returned from Gemini");
+  // Generative AI fallback via Flux
+  const encodedPrompt = encodeURIComponent(fullPrompt.slice(0, 1000));
+  const pollUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&model=flux`;
+  const pollRes = await fetch(pollUrl, { signal: AbortSignal.timeout(30_000) });
+  if (pollRes.ok) {
+    const buffer = await pollRes.arrayBuffer();
+    return { buffer, contentType: "image/jpeg" };
+  }
 
-  const bytes = Buffer.from(prediction.bytesBase64Encoded, "base64");
-  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  return { buffer, contentType: prediction.mimeType ?? "image/png" };
+  throw new Error("Failed to generate concept art");
 }
 
 // â”€â”€â”€ Main Route Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
