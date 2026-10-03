@@ -297,7 +297,7 @@ export function ConceptArtGenerator({ isOpen, onClose }: ConceptArtGeneratorProp
                 <span className="text-xs font-bold" style={{ color: currentProvider.color }}>{currentProvider.shortName}</span>
                 {hasKey
                   ? <CheckCircle2 className="w-3.5 h-3.5" style={{ color: currentProvider.color }} />
-                  : <Settings2 className="w-3.5 h-3.5 text-amber-500" />
+                  : <Settings2 className="w-3.5 h-3.5 text-zinc-300" />
                 }
               </button>
               <button onClick={onClose} id="concept-art-close-btn"
@@ -319,13 +319,13 @@ export function ConceptArtGenerator({ isOpen, onClose }: ConceptArtGeneratorProp
               {needsKey && !hasKey && (
                 <button onClick={() => setShowSettings(true)}
                   className="flex items-center gap-2.5 p-3.5 rounded-2xl w-full text-left cursor-pointer"
-                  style={{ background: "rgba(245,158,11,0.08)", border: "1.5px solid rgba(245,158,11,0.3)" }}>
-                  <Settings2 className="w-4 h-4 text-amber-500 shrink-0" />
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                  <Settings2 className="w-4 h-4 text-white shrink-0" />
                   <div className="flex-1">
-                    <p className="text-xs font-bold text-amber-700">API Key Diperlukan</p>
-                    <p className="text-[10px] text-amber-600">Klik untuk masukkan {currentProvider.name} API key</p>
+                    <p className="text-xs font-bold text-white">API Key Diperlukan</p>
+                    <p className="text-[10px] text-zinc-300">Klik untuk masukkan {currentProvider.name} API key</p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-amber-400" />
+                  <ChevronRight className="w-4 h-4 text-white/60" />
                 </button>
               )}
 

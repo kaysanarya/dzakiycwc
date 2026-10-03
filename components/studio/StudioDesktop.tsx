@@ -262,9 +262,13 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
                 ? "Sedang membuat foto produk studio"
                 : `Buat foto studio (${generationCount} gambar)`
             }
-            className="btn-primary w-full h-11 text-xs font-semibold flex items-center justify-center gap-2 rounded-xl shadow-md cursor-pointer transition-all"
+            className={`w-full h-11 text-xs font-semibold flex items-center justify-center gap-2 rounded-xl transition-all cursor-pointer ${
+              isGenerating || sourceImages.length === 0
+                ? "bg-zinc-900 text-zinc-500 border border-zinc-800 cursor-not-allowed"
+                : "bg-white text-black font-semibold hover:bg-zinc-200 border-none shadow-md"
+            }`}
           >
-            <Play className="w-4 h-4 fill-current shrink-0" />
+            <Play className={`w-4 h-4 fill-current shrink-0 ${isGenerating || sourceImages.length === 0 ? "text-zinc-500" : "text-black fill-black"}`} />
             <span>
               {isGenerating
                 ? (language === "id" ? "Memproses foto studio..." : "Generating studio shoot...")
@@ -297,9 +301,9 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
 
         {/* Quota Notice */}
         {quotaExceededNotice && (
-          <div className="mb-4 p-3 rounded-xl bg-amber-950/60 border border-amber-800 text-xs text-amber-200 flex items-center justify-between">
+          <div className="mb-4 p-3 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-white shrink-0" />
               <span>
                 {language === "id"
                   ? "Batas antrean demo tercapai. Silakan coba kembali sesaat lagi."
@@ -309,7 +313,7 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
             <button
               type="button"
               onClick={() => setQuotaExceededNotice(false)}
-              className="font-semibold underline hover:text-white cursor-pointer ml-3"
+              className="font-semibold underline text-white hover:text-zinc-300 cursor-pointer ml-3"
             >
               {t.page.dismiss}
             </button>
@@ -333,10 +337,10 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
                 type="button"
                 id="desktop-empty-load-demo"
                 onClick={handleLoadDemoProduct}
-                className="btn-secondary h-9 px-4 text-xs gap-1.5 rounded-lg border-studio-border"
+                className="h-9 px-4 text-xs gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900/80 hover:bg-zinc-800 text-white font-medium flex items-center transition-colors cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 text-zinc-100" />
-                <span>
+                <Sparkles className="w-3.5 h-3.5 text-white" />
+                <span className="text-white">
                   {language === "id"
                     ? "Atau muat contoh produk demo sepatu"
                     : "Or load demo footwear product"}
@@ -432,9 +436,9 @@ export function StudioDesktop({ session }: StudioDesktopProps) {
               <button
                 type="button"
                 onClick={handleRunAgent}
-                className="btn-primary h-8 px-3.5 text-xs gap-1.5 shrink-0"
+                className="h-9 px-4 text-xs font-semibold gap-1.5 shrink-0 rounded-xl bg-white text-black hover:bg-zinc-200 border-none shadow-md flex items-center cursor-pointer transition-all"
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
+                <Play className="w-3.5 h-3.5 fill-black text-black" />
                 <span>{language === "id" ? "Buat foto sekarang" : "Create photo now"}</span>
               </button>
             </div>

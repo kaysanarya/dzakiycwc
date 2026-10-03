@@ -33,8 +33,8 @@ export function Header({
       {/* Sisi Kiri (Branding) */}
       <div className="flex items-center gap-2 sm:gap-3 select-none shrink-0">
         <div className="flex items-center gap-2">
-          <VellumLogoMark className="w-4 h-4 text-zinc-100 shrink-0" />
-          <span className="font-semibold tracking-wide text-studio-text text-sm font-heading">
+          <VellumLogoMark className="w-4 h-4 text-white fill-white shrink-0" color="#ffffff" />
+          <span className="font-semibold tracking-wide text-white text-sm font-heading">
             VELLUM
           </span>
         </div>
@@ -63,12 +63,12 @@ export function Header({
           onClick={onLoadDemoProduct}
           type="button"
           aria-label="Muat produk demo sepatu"
-          className="h-8 px-2 sm:px-3 rounded-lg text-xs font-medium text-studio-text border border-studio-border bg-studio-card hover:bg-studio-subcard transition-colors flex items-center gap-1.5 cursor-pointer"
+          className="h-8 px-2 sm:px-3 rounded-lg text-xs font-medium text-white border border-zinc-700 bg-studio-card hover:bg-studio-subcard transition-colors flex items-center gap-1.5 cursor-pointer"
           title={t.header.loadDemoProductTitle}
         >
-          <Sparkles className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
-          <span className="hidden sm:inline">{t.header.loadDemoProduct}</span>
-          <span className="sm:hidden text-xs">Demo</span>
+          <Sparkles className="w-3.5 h-3.5 text-white shrink-0" />
+          <span className="hidden sm:inline text-white">{t.header.loadDemoProduct}</span>
+          <span className="sm:hidden text-xs text-white">Demo</span>
         </button>
 
         {/* Tombol History */}

@@ -156,24 +156,24 @@ export function ProductSourceUpload({
               : "border-studio-border hover:border-studio-default bg-studio-card hover:bg-studio-subcard"
           }`}
         >
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-studio-subcard border border-studio-border flex items-center justify-center text-zinc-100 mb-3 sm:mb-4">
-            <Upload className="w-6 h-6 sm:w-7 sm:h-7" />
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mb-3 sm:mb-4">
+            <Upload className="w-6 h-6 sm:w-7 sm:h-7 text-white stroke-[2.5]" style={{ color: "#ffffff" }} />
           </div>
 
-          <h2 className="text-sm sm:text-base font-semibold text-studio-text max-w-md font-heading break-words px-2">
+          <h2 className="text-sm sm:text-base font-semibold text-white max-w-md font-heading break-words px-2">
             {language === "id"
               ? "Unggah foto produk asli untuk memulai foto studio"
               : "Upload authentic product photo to begin studio shoot"}
           </h2>
 
-          <p className="text-xs text-studio-muted mt-1.5 max-w-sm px-2">
+          <p className="text-xs text-zinc-400 mt-1.5 max-w-sm px-2">
             {language === "id"
               ? "Tarik file ke sini, atau klik untuk memilih file."
               : "Drag and drop files here, or click to browse."}
           </p>
 
-          <div className="mt-4 sm:mt-5 inline-flex items-center gap-2 btn-primary px-4 sm:px-5 py-2.5 text-xs font-semibold rounded-xl shadow-sm min-h-[44px]">
-            <Upload className="w-4 h-4" />
+          <div className="mt-4 sm:mt-5 inline-flex items-center gap-2 bg-white text-black font-semibold hover:bg-zinc-200 border-none shadow-md px-4 sm:px-5 py-2.5 text-xs rounded-xl min-h-[44px]">
+            <Upload className="w-4 h-4 text-black" />
             <span>{language === "id" ? "Pilih Foto Produk" : "Select Product Photo"}</span>
           </div>
 

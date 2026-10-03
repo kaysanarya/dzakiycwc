@@ -89,9 +89,9 @@ export function StudioMobile({ session }: StudioMobileProps) {
 
         {/* Demo Quota Exceeded Notice */}
         {quotaExceededNotice && (
-          <div className="p-3 rounded-xl bg-amber-950/60 border border-amber-800/80 text-xs text-amber-200 flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-white shrink-0" />
               <span className="leading-snug">
                 {language === "id"
                   ? "Batas antrean demo tercapai. Silakan coba sesaat lagi."
@@ -101,7 +101,7 @@ export function StudioMobile({ session }: StudioMobileProps) {
             <button
               type="button"
               onClick={() => setQuotaExceededNotice(false)}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center font-semibold text-xs text-amber-300 hover:text-white cursor-pointer shrink-0 ml-1"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center font-semibold text-xs text-white hover:text-zinc-300 cursor-pointer shrink-0 ml-1"
             >
               {t.page.dismiss}
             </button>
@@ -128,10 +128,10 @@ export function StudioMobile({ session }: StudioMobileProps) {
                 type="button"
                 id="mobile-empty-load-demo"
                 onClick={handleLoadDemoProduct}
-                className="w-full min-h-[48px] px-4 rounded-xl border border-studio-border bg-studio-card text-studio-text hover:bg-studio-subcard transition-all flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer active:scale-98"
+                className="w-full min-h-[48px] px-4 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-white transition-all flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer active:scale-98"
               >
-                <Sparkles className="w-4 h-4 text-zinc-100" />
-                <span>
+                <Sparkles className="w-4 h-4 text-white" />
+                <span className="text-white">
                   {language === "id"
                     ? "Coba dengan foto produk demo sepatu"
                     : "Try with demo footwear photo"}
@@ -311,9 +311,13 @@ export function StudioMobile({ session }: StudioMobileProps) {
                 ? "Sedang membuat foto studio"
                 : `Buat foto produk studio (${generationCount} variasi)`
             }
-            className="btn-primary w-full min-h-[50px] text-sm font-semibold flex items-center justify-center gap-2 rounded-xl shadow-md cursor-pointer active:scale-98 transition-all"
+            className={`w-full min-h-[50px] text-sm font-semibold flex items-center justify-center gap-2 rounded-xl transition-all ${
+              isGenerating || sourceImages.length === 0
+                ? "bg-zinc-900 text-zinc-500 border border-zinc-800 cursor-not-allowed"
+                : "bg-white text-black font-semibold hover:bg-zinc-200 border-none shadow-md cursor-pointer active:scale-98"
+            }`}
           >
-            <Play className="w-4 h-4 fill-current shrink-0" />
+            <Play className={`w-4 h-4 fill-current shrink-0 ${isGenerating || sourceImages.length === 0 ? "text-zinc-500" : "text-black fill-black"}`} />
             <span>
               {isGenerating
                 ? (language === "id" ? "Memproses foto studio..." : "Generating studio shoot...")

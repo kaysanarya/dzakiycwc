@@ -228,17 +228,17 @@ export function CameraSettings({
 
           {/* Model Setting (Only if provider supports image conditioning) */}
           {supportsImageConditioning && (
-            <div className="p-3 rounded-lg border border-amber-800/40 bg-amber-950/20 space-y-2">
+            <div className="p-3 rounded-lg border border-zinc-700 bg-zinc-900/60 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
                   <span>{language === "id" ? "Tampilan Model" : "Model Setting"}</span>
                 </span>
-                <span className="text-[9px] font-bold text-amber-400 bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">
+                <span className="text-[9px] font-bold text-zinc-300 bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700">
                   {language === "id" ? "Eksperimental" : "Experimental"}
                 </span>
               </div>
-              <p className="text-[11px] text-amber-200/70">
+              <p className="text-[11px] text-zinc-400">
                 {language === "id" ? "Produk tidak dijamin identik" : "Product details not guaranteed"}
               </p>
               <div className="grid grid-cols-2 gap-1.5">
@@ -251,7 +251,7 @@ export function CameraSettings({
                       onClick={() => onChangeDirection({ ...direction, modelSetting: setting })}
                       className={`p-1.5 rounded text-xs font-medium border text-center transition-all ${
                         isSelected
-                          ? "bg-amber-500/20 text-amber-200 border-amber-500/50"
+                          ? "bg-white text-zinc-950 font-bold border-white"
                           : "bg-zinc-900/80 text-zinc-400 border-zinc-800"
                       }`}
                     >

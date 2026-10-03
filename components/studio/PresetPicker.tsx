@@ -62,7 +62,7 @@ export const BACKGROUND_PRESETS: BackgroundPresetItem[] = [
     nameEn: "Match Reference",
     descId: "Meniru tata cahaya foto referensi",
     descEn: "Match photo lighting",
-    previewClass: "bg-gradient-to-br from-amber-700/60 to-zinc-900 border-amber-600/50",
+    previewClass: "bg-gradient-to-br from-zinc-600 to-zinc-900 border-zinc-500",
   },
 ];
 

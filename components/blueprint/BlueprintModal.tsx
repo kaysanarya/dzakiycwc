@@ -151,12 +151,12 @@ export function BlueprintModal({ blueprint, isOpen, onClose }: BlueprintModalPro
 
               {/* Footwear Specific Specs (If applicable) */}
               {blueprint.heel && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-400/30 space-y-3 shadow-2xs">
-                  <div className="flex items-center justify-between border-b border-amber-400/20 pb-2">
-                    <span className="text-xs font-bold text-amber-300 uppercase tracking-wide">
+                <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.1] space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
+                    <span className="text-xs font-bold text-white uppercase tracking-wide">
                       {t.blueprintModal.footwearHeelArchitecture}
                     </span>
-                    <span className="text-[10px] font-semibold text-amber-400/90">
+                    <span className="text-[10px] font-semibold text-zinc-400">
                       {t.blueprintModal.lockedConstraints}
                     </span>
                   </div>

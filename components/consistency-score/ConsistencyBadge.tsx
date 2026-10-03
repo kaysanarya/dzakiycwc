@@ -25,7 +25,7 @@ export function ConsistencyBadge({
       <div className="flex items-center justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           {isUnverified ? (
-            <div className="w-6 h-6 rounded bg-amber-950/80 border border-amber-800 flex items-center justify-center text-amber-400 shrink-0">
+            <div className="w-6 h-6 rounded bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 shrink-0">
               <AlertTriangle className="w-3.5 h-3.5" />
             </div>
           ) : isPassing ? (
@@ -66,7 +66,7 @@ export function ConsistencyBadge({
         <span
           className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full max-w-full truncate ${
             isUnverified
-              ? "bg-amber-500/15 text-amber-300 border border-amber-400/30"
+              ? "bg-zinc-800/80 text-zinc-200 border border-zinc-700"
               : isPassing
               ? "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30"
               : "bg-rose-500/15 text-rose-300 border border-rose-400/30"
@@ -125,7 +125,7 @@ export function ConsistencyBadge({
             <div className="mt-2 text-[10px] text-white/60 space-y-1 break-words">
               {validation.notes.map((note: string, idx: number) => (
                 <p key={idx} className="flex items-start gap-1.5">
-                  <span className="text-amber-400 font-bold shrink-0">•</span>
+                  <span className="text-zinc-400 font-bold shrink-0">•</span>
                   <span className="break-words">{note}</span>
                 </p>
               ))}

@@ -164,7 +164,7 @@ export function ApiSettingsModal({
           </div>
         ) : (
           <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 flex items-start gap-2.5 text-xs">
-            <span className="w-2 h-2 rounded-full bg-amber-400/80 shrink-0 mt-1" />
+            <span className="w-2 h-2 rounded-full bg-white shrink-0 mt-1 shadow-[0_0_6px_rgba(255,255,255,0.6)]" />
             <div>
               <p className="font-semibold text-zinc-200">
                 {language === "id" ? "Mode Demo Aktif" : "Demo Mode Active"}
@@ -250,7 +250,7 @@ export function ApiSettingsModal({
                     {language === "id"
                       ? "Secara default, key hanya disimpan untuk sesi browser ini (sessionStorage). Centang untuk menyimpan permanen di browser ini (localStorage)."
                       : "By default, key is stored only for this browser session (sessionStorage). Check to store permanently on this device (localStorage)."}
-                    <span className="text-amber-400/90 block mt-0.5 font-medium">
+                    <span className="text-zinc-300 block mt-0.5 font-medium">
                       ⚠️ {language === "id" ? "Peringatan: Jangan centang bila menggunakan komputer publik atau bersama." : "Warning: Do not check on public or shared computers."}
                     </span>
                   </p>
