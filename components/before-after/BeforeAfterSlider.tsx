@@ -52,18 +52,32 @@ export function BeforeAfterSlider({
   const handleMove = useCallback((clientX: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
+    if (rect.width <= 0) return;
     const x = clientX - rect.left;
     const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
     setSliderPosition(percent);
   }, []);
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    handleMove(e.touches[0].clientX);
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDragging.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    handleMove(e.clientX);
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isDragging.current) {
       handleMove(e.clientX);
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging.current) {
+      isDragging.current = false;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
     }
   };
 
@@ -87,51 +101,49 @@ export function BeforeAfterSlider({
       aria-valuemin={0}
       aria-valuemax={100}
       onKeyDown={handleKeyDown}
-      className={`relative w-full aspect-square max-h-[560px] rounded-xl overflow-hidden select-none cursor-ew-resize border border-zinc-800 bg-zinc-950 focus-visible:ring-2 focus-visible:ring-blue-500 ${className}`}
-      onMouseDown={(e) => {
-        isDragging.current = true;
-        handleMove(e.clientX);
-      }}
-      onMouseUp={() => (isDragging.current = false)}
-      onMouseLeave={() => (isDragging.current = false)}
-      onMouseMove={handleMouseMove}
-      onTouchMove={handleTouchMove}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      className={`relative w-full aspect-square max-h-[560px] rounded-xl overflow-hidden select-none cursor-ew-resize border border-studio-border bg-studio-bg touch-pan-y focus-visible:ring-2 focus-visible:ring-studio-accent ${className}`}
     >
       {/* Right: Generated Image (Base layer) */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={generatedUrl}
         alt="Hasil Studio AI"
+        loading="lazy"
         className="absolute inset-0 w-full h-full object-contain pointer-events-none p-2"
       />
-      <div className="absolute top-3 right-3 bg-zinc-950/90 backdrop-blur-md border border-zinc-800 text-zinc-300 text-[11px] font-mono tracking-wider uppercase px-2.5 py-1 rounded-md shadow-md">
+      <div className="absolute top-3 right-3 bg-studio-bg/90 backdrop-blur-md border border-studio-border text-studio-text text-[11px] font-mono tracking-wider uppercase px-2.5 py-1 rounded-md shadow-md pointer-events-none select-none">
         {generatedLabel}
       </div>
 
       {/* Left: Source Image (Clipped layer) */}
       <div
-        className="absolute inset-y-0 left-0 overflow-hidden pointer-events-none"
+        className="absolute inset-y-0 left-0 overflow-hidden pointer-events-none select-none"
         style={{ width: `${sliderPosition}%` }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={sourceUrl}
           alt="Foto Asli Produk"
+          loading="lazy"
           className="absolute inset-0 w-full h-full object-contain p-2 max-w-none"
           style={{ width: containerWidth ? `${containerWidth}px` : "100%" }}
         />
-        <div className="absolute top-3 left-3 bg-zinc-950/90 backdrop-blur-md border border-zinc-800 text-zinc-300 text-[11px] font-mono tracking-wider uppercase px-2.5 py-1 rounded-md shadow-md">
+        <div className="absolute top-3 left-3 bg-studio-bg/90 backdrop-blur-md border border-studio-border text-studio-text text-[11px] font-mono tracking-wider uppercase px-2.5 py-1 rounded-md shadow-md pointer-events-none select-none">
           {sourceLabel}
         </div>
       </div>
 
-      {/* Divider Line & Handle */}
+      {/* Divider Line & Touch-Friendly Handle (36x36px on mobile) */}
       <div
-        className="absolute inset-y-0 w-px bg-zinc-400/90 pointer-events-none shadow-[0_0_8px_rgba(255,255,255,0.4)]"
+        className="absolute inset-y-0 w-[2px] bg-studio-accent/90 pointer-events-none shadow-[0_0_8px_rgba(200,141,72,0.5)]"
         style={{ left: `${sliderPosition}%` }}
       >
-        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-zinc-900 border border-zinc-600 flex items-center justify-center text-zinc-300 shadow-xl shadow-black/80 hover:scale-105 transition-transform">
-          <Sliders className="w-3 h-3 text-zinc-400" />
+        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-studio-subcard border-2 border-studio-accent flex items-center justify-center text-studio-text shadow-xl shadow-black/80 hover:scale-105 active:scale-95 transition-transform pointer-events-none">
+          <Sliders className="w-3.5 h-3.5 text-studio-accent" />
         </div>
       </div>
     </div>
