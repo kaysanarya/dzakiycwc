@@ -284,24 +284,20 @@ export function ResultGallery({
       </div>
 
       {/* Banner Ringkas Demo / Degraded di atas Galeri (Requirement h: <= 2 baris mobile) */}
-      {outputs.some((o) => o.method === "demo" || o.imageUrl.includes("/demo/") || o.imageUrl.endsWith(".svg")) ? (
+      {outputs.some((o) => o.method === "demo" || o.method === "demo-plate-composite" || o.imageUrl.includes("/demo/") || o.imageUrl.endsWith(".svg")) ? (
         <div className="p-2.5 sm:p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-200 text-xs flex items-center gap-2.5">
           <Info className="w-4 h-4 text-purple-400 shrink-0" />
           <p className="text-[11px] sm:text-xs leading-snug line-clamp-2">
-            <strong className="text-purple-300 font-semibold">Mode Simulasi Demo: </strong>
-            {language === "id"
-              ? "Hasil pratinjau simulasi demo. Masukkan API key di menu Pengaturan Key untuk hasil produk asli."
-              : "Preview demo simulation. Configure your API key in Key Settings for authentic generation."}
+            <strong className="text-purple-300 font-semibold">Demo: </strong>
+            Demo — latar prosedural, bukan hasil AI generatif
           </p>
         </div>
       ) : outputs.some((o) => o.degraded) ? (
         <div className="p-2.5 sm:p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-center gap-2.5">
           <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
           <p className="text-[11px] sm:text-xs leading-snug line-clamp-2">
-            <strong className="text-amber-300 font-semibold">Generasi Degraded: </strong>
-            {language === "id"
-              ? "Dihasilkan tanpa foto produk asli; detail fisik produk mungkin tidak akurat."
-              : "Generated without raw product photos; physical details may not be accurate."}
+            <strong className="text-amber-300 font-semibold">Eksperimental: </strong>
+            produk tidak dijamin identik
           </p>
         </div>
       ) : null}
@@ -354,15 +350,11 @@ export function ResultGallery({
                     </span>
                   ) : out.degraded ? (
                     <span
-                      title={
-                        out.method === "stability-core" || out.method === "replicate-flux"
-                          ? "Fallback: dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat"
-                          : "Dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat"
-                      }
+                      title="Eksperimental: produk tidak dijamin identik"
                       className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-amber-500 text-black border border-amber-400 backdrop-blur-md shadow-xs inline-flex items-center gap-1"
                     >
                       <AlertTriangle className="w-3 h-3 text-black" />
-                      <span>DEGRADED</span>
+                      <span>{out.method?.includes("human") || out.method?.includes("sd3-img2img") || out.method?.includes("sdxl") ? "EKSPERIMENTAL" : "DEGRADED"}</span>
                     </span>
                   ) : out.method === "stability-sd3-img2img" ? (
                     <span
@@ -482,16 +474,12 @@ export function ResultGallery({
                   {isDemo ? (
                     <p className="text-[10px] text-purple-200/90 bg-purple-500/10 border border-purple-400/20 rounded-lg p-2 leading-tight flex items-start gap-1.5 break-words min-w-0">
                       <Info className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
-                      <span>Simulasi pratinjau: aset demonstrasi contoh, bukan hasil model AI asli.</span>
+                      <span>Demo — latar prosedural, bukan hasil AI generatif</span>
                     </p>
                   ) : out.degraded ? (
                     <p className="text-[10px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 leading-tight flex items-start gap-1.5 break-words min-w-0">
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                      <span>
-                        {out.method === "stability-core" || out.method === "replicate-flux"
-                          ? "Fallback inpainting: dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat."
-                          : "Dihasilkan tanpa foto produk asli; detail produk mungkin tidak akurat."}
-                      </span>
+                      <span>produk tidak dijamin identik</span>
                     </p>
                   ) : null}
                 </div>

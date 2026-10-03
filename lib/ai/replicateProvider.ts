@@ -216,7 +216,9 @@ export class ReplicateAIProvider implements AIProvider {
           checks: {},
           status: "unverified",
           notes: [
-            "Visual consistency check skipped: Replicate FLUX model is generation-only and does not support multimodal self-audit. Independent validation available at Step 6.",
+            isHumanModel
+              ? "Eksperimental: model manusia / interaksi tangan — produk tidak dijamin identik."
+              : "Visual consistency check skipped: Replicate FLUX model is generation-only and does not support multimodal self-audit. Independent validation available at Step 6.",
           ],
           isFallback: true,
           validatedAt: new Date().toISOString(),

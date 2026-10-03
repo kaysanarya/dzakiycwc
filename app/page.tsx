@@ -553,14 +553,19 @@ export default function Home() {
 
       let finalOutputs = auditedOutputs;
       let retries = 0;
-      const maxRetries = 2;
+      // Requirement 5: Retry maksimal 1x, hanya jika provider berbayar dan validasi gagal
+      const isPaidProvider = Boolean(apiCredentials?.apiKey);
+      const maxRetries = isPaidProvider ? 1 : 0;
 
-      while (retries < maxRetries && finalOutputs.some((o) => o.consistencyScore !== null && o.consistencyScore < 85)) {
+      while (
+        retries < maxRetries &&
+        finalOutputs.some((o) => o.status === "rejected" || o.validation.status === "needs_regeneration")
+      ) {
         retries++;
-        setCurrentLogMessage(`STEP 6: Inconsistent output detected. Auto-regenerating attempt ${retries}/${maxRetries}...`);
+        setCurrentLogMessage(`STEP 6: Quality validation failed. Auto-regenerating attempt 1/1...`);
 
         const regenPromises = finalOutputs.map(async (output: GeneratedOutput): Promise<GeneratedOutput> => {
-          if (output.consistencyScore === null || output.consistencyScore >= 85) return output;
+          if (output.status !== "rejected" && output.validation.status !== "needs_regeneration") return output;
 
           try {
             const regenRes = await fetch("/api/generate", {
@@ -595,43 +600,13 @@ export default function Home() {
                   ...output.validation,
                   notes: [
                     ...(output.validation.notes || []),
-                    `Auto-regeneration attempt ${retries} failed (HTTP ${regenRes.status}).`,
+                    `Auto-regeneration attempt failed (HTTP ${regenRes.status}).`,
                   ],
                 },
               };
             }
             const newOutput = regenData.outputs?.[0];
             if (newOutput) {
-              if (newOutput.validation?.isFallback) {
-                try {
-                  const valRes = await fetch("/api/validate", {
-                    method: "POST",
-                    headers: getAuthHeaders(),
-                    signal,
-                    body: JSON.stringify({
-                      sourceImages,
-                      generatedImageUrl: newOutput.imageUrl,
-                      blueprint: currentBlueprint,
-                      locks,
-                      angle: newOutput.angle,
-                    }),
-                  });
-
-                  if (valRes.ok) {
-                    const valData = (await valRes.json()) as { validation?: ValidationResult };
-                    if (valData.validation) {
-                      return {
-                        ...newOutput,
-                        consistencyScore: valData.validation.score,
-                        validation: valData.validation,
-                        status: valData.validation.status === "needs_regeneration" ? ("rejected" as const) : ("passed" as const),
-                      };
-                    }
-                  }
-                } catch (vErr: unknown) {
-                  if (vErr instanceof Error && vErr.name === "AbortError") throw vErr;
-                }
-              }
               return newOutput;
             }
 
@@ -656,22 +631,6 @@ export default function Home() {
 
         finalOutputs = await Promise.all(regenPromises);
       }
-
-      // If still below 85 after max retries, tag with Warning: Low Consistency and rejected status
-      finalOutputs = finalOutputs.map((o: GeneratedOutput) => {
-        if (o.consistencyScore !== null && o.consistencyScore < 85) {
-          return {
-            ...o,
-            status: "rejected" as const,
-            validation: {
-              ...o.validation,
-              status: "needs_regeneration" as const,
-              notes: [...(o.validation.notes || []), "Warning: Low Consistency (persisted after retries)"],
-            },
-          };
-        }
-        return o;
-      });
 
       updateStepStatus(6, "completed", `Consistency evaluated (${retries > 0 ? `${retries} auto-retries handled` : "Passed validation"})`);
 

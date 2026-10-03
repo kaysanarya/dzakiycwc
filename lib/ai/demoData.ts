@@ -81,11 +81,10 @@ export const DEMO_REFERENCE_ANALYSIS: ReferenceAnalysis = {
 
 export const DEMO_VALIDATION_PERFECT: ValidationResult = {
   score: 92,
-  status: "passed",
+  status: "pass",
   checks: {
-    maskQuality: true,
-    placement: true,
-    scale: true,
+    shape: 95,
+    proportions: 90,
   },
   notes: [
     "Demo — latar prosedural, bukan hasil AI generatif",

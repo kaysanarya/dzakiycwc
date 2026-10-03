@@ -222,6 +222,15 @@ Return JSON ONLY:
   }
 
   async generateProductImages(input: GenerateImagesInput): Promise<GeneratedOutput[]> {
+    const isHumanModel = input.direction.modelSetting === "human_model" || input.direction.modelSetting === "partial_hands";
+    if (isHumanModel) {
+      throw new AiPipelineError(
+        "Opsi 'Dipakai di Kaki / Dipegang Tangan' adalah eksperimental dan hanya aktif bila provider mendukung image-conditioned editing (Stability AI / Replicate). Google Gemini / Imagen tidak mendukung editing berbasis gambar.",
+        "provider",
+        { provider: "gemini" }
+      );
+    }
+
     const count = Math.min(Math.max(1, input.count), 8);
     const signal = (input as { signal?: AbortSignal }).signal;
 
@@ -527,30 +536,25 @@ Extract ONLY the photographic lighting style, color temperature, shadow softness
     input: ValidateConsistencyInput
   ): Promise<ValidationResult> {
     try {
-      const prompt = `You are a strict Product Quality Inspector comparing a generated product photo against the original raw reference blueprint.
-Blueprint constraints:
-- Category: ${input.blueprint.category}
-- Shape: ${input.blueprint.shape}
-- Color: ${input.blueprint.color}
-- Material: ${input.blueprint.material}
-- Proportions: ${input.blueprint.proportions}
-${input.blueprint.heel ? `- Heel: ${JSON.stringify(input.blueprint.heel)}` : ""}
-
-Evaluate whether the generated image preserved the physical product identity.
+      const prompt = `You are a Commercial Studio Photography Quality Inspector auditing the compositing quality of a commercial product photo.
+Image 1 is the original raw product. Image 2 is the composited studio photograph.
+Inspect:
+1. Mask Quality & Edges: Clean alpha boundaries without harsh fringes, halos, or cutout artifacts.
+2. Placement & Grounding: The product is seated naturally on the surface with realistic contact shadows, not floating, not cut off at borders.
+3. Scale & Proportions: Product is well-proportioned within the commercial catalog frame (50-75% height).
 Return JSON ONLY:
 {
   "score": number (0-100),
   "checks": {
-    "shape": number (0-100),
-    "color": number (0-100),
+    "shape": number (0-100, edge cleanliness),
+    "color": number (0-100, shadow tone matching),
     "material": number (0-100),
     "logo": number (0-100),
-    "components": number (0-100),
-    "proportions": number (0-100),
-    "heel": number (0-100, optional)
+    "components": number (0-100, no clipped elements),
+    "proportions": number (0-100, scale balance)
   },
   "status": "pass" | "needs_regeneration",
-  "notes": ["list of findings"]
+  "notes": ["list of findings regarding mask edges, placement, and shadows"]
 }`;
 
       // Extract raw base64 and mime type from source product image (F-07)

@@ -16,6 +16,7 @@ import {
   DEMO_REFERENCE_ANALYSIS,
 } from "./demoData";
 import { generateProceduralPlate, compositeProductOnPlate } from "./studioCompositor";
+import { AiPipelineError } from "./AiPipelineError";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -86,6 +87,15 @@ export class DemoAIProvider implements AIProvider {
   }
 
   async generateProductImages(input: GenerateImagesInput): Promise<GeneratedOutput[]> {
+    const isHumanModel = input.direction.modelSetting === "human_model" || input.direction.modelSetting === "partial_hands";
+    if (isHumanModel) {
+      throw new AiPipelineError(
+        "Opsi 'Dipakai di Kaki / Dipegang Tangan' adalah eksperimental dan hanya aktif bila provider mendukung image-conditioned editing (Stability AI / Replicate). Demo Mode hanya mendukung Plate + Composite.",
+        "provider",
+        { provider: "demo" }
+      );
+    }
+
     const outputs: GeneratedOutput[] = [];
     const count = Math.min(Math.max(1, input.count), 8);
 
@@ -126,11 +136,10 @@ export class DemoAIProvider implements AIProvider {
 
       const validation: ValidationResult = {
         score: 90,
-        status: "passed",
+        status: "pass",
         checks: {
-          maskQuality: true,
-          placement: true,
-          scale: true,
+          shape: 90,
+          proportions: 90,
         },
         notes: [
           "Demo — latar prosedural, bukan hasil AI generatif",
@@ -166,11 +175,10 @@ export class DemoAIProvider implements AIProvider {
 
     return {
       score: 90,
-      status: "passed",
+      status: "pass",
       checks: {
-        maskQuality: true,
-        placement: true,
-        scale: true,
+        shape: 90,
+        proportions: 90,
       },
       notes: [
         "Demo — latar prosedural, bukan hasil AI generatif",

@@ -192,11 +192,13 @@ export class StabilityAIProvider implements AIProvider {
           checks: {},
           status: "unverified",
           notes: [
-            usedMethod === "stability-inpaint"
-              ? "Metode: Stability Inpaint (Presisi Tinggi — area produk asli dipertahankan menggunakan binary mask)."
+            isHumanModel
+              ? "Eksperimental: model manusia / interaksi tangan — produk tidak dijamin identik."
+              : usedMethod === "stability-plate-composite"
+              ? "Studio commercial plate + composite."
               : usedMethod === "stability-sd3-img2img"
-              ? "Metode: Stability SD3 Image-to-Image (Presisi Menengah/Parsial — memakai foto produk asli sebagai panduan difusi)."
-              : "Metode: Stability Core Fallback (Degraded — text-to-image tanpa foto produk asli).",
+              ? "Metode: Stability SD3 Image-to-Image (produk tidak dijamin identik)."
+              : "Metode: Stability Core.",
             "Audit visual dilewati: provider generation-only.",
           ],
           isFallback: true,
