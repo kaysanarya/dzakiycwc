@@ -138,86 +138,141 @@ export async function generateProceduralPlate(options: ProceduralPlateOptions = 
 }
 
 /**
- * Generates contact shadow and ambient occlusion layers from product alpha silhouette.
- * Shading is applied exclusively to shadow layers, never altering product pixels.
+ * Multi-layer shadow system for commercial studio photography realism:
+ * 1. Contact shadow (ambient occlusion): dense, thin (0-3px) shadow directly beneath contact points.
+ * 2. Directional cast shadow: soft graduated shadow diffused along key light direction.
+ * 3. Ambient penumbra: broad natural floor occlusion falloff.
  */
-async function generateShadowLayers(
-  alphaResized: Buffer,
+async function generateMultiLayerShadows(
   scaledW: number,
   scaledH: number
 ): Promise<{
-  contactShadow: { input: Buffer; left: number; top: number };
-  ambientOcclusion: { input: Buffer; left: number; top: number };
+  contactShadow: { input: Buffer; topOffset: number };
+  castShadow: { input: Buffer; leftOffset: number; topOffset: number };
+  ambientPenumbra: { input: Buffer; topOffset: number };
 }> {
-  // 1. Contact shadow: tight, dark shadow right under the contact baseline
-  const contactH = Math.max(8, Math.round(scaledH * 0.12));
-  const contactW = Math.max(16, Math.round(scaledW * 0.95));
+  // 1. Contact shadow: ultra-tight, dark grounding band (0–3px perceived height)
+  const contactW = Math.max(16, Math.round(scaledW * 0.92));
+  const contactH = Math.max(4, Math.round(scaledH * 0.04));
 
-  // Create tight squished contact shadow ellipse
   const contactSvg = `
     <svg width="${contactW}" height="${contactH}" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="contactGrad" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#0a0b10" stop-opacity="0.85" />
-          <stop offset="45%" stop-color="#11131a" stop-opacity="0.55" />
-          <stop offset="85%" stop-color="#1a1d26" stop-opacity="0.15" />
-          <stop offset="100%" stop-color="#1a1d26" stop-opacity="0" />
+        <radialGradient id="contactG" cx="50%" cy="50%" rx="50%" ry="50%">
+          <stop offset="0%" stop-color="#050608" stop-opacity="0.94" />
+          <stop offset="60%" stop-color="#0d0f15" stop-opacity="0.75" />
+          <stop offset="85%" stop-color="#141720" stop-opacity="0.25" />
+          <stop offset="100%" stop-color="#141720" stop-opacity="0" />
         </radialGradient>
       </defs>
-      <ellipse cx="${contactW / 2}" cy="${contactH / 2}" rx="${contactW * 0.48}" ry="${contactH * 0.45}" fill="url(#contactGrad)" />
+      <ellipse cx="${contactW / 2}" cy="${contactH / 2}" rx="${contactW * 0.49}" ry="${contactH * 0.45}" fill="url(#contactG)" />
     </svg>
   `;
-
   const contactShadowBuf = await sharp(Buffer.from(contactSvg))
-    .blur(2.5)
+    .blur(1.2)
     .png()
     .toBuffer();
 
-  // 2. Ambient occlusion: broader, softer diffuse penumbra under base
-  const aoW = Math.max(24, Math.round(scaledW * 1.15));
-  const aoH = Math.max(12, Math.round(scaledH * 0.22));
+  // 2. Directional cast shadow: diffused graduated shadow extending softly to the right/front
+  const castW = Math.max(24, Math.round(scaledW * 1.15));
+  const castH = Math.max(12, Math.round(scaledH * 0.16));
 
-  const aoSvg = `
-    <svg width="${aoW}" height="${aoH}" xmlns="http://www.w3.org/2000/svg">
+  const castSvg = `
+    <svg width="${castW}" height="${castH}" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="aoGrad" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#12141c" stop-opacity="0.45" />
-          <stop offset="50%" stop-color="#1c1f2b" stop-opacity="0.22" />
-          <stop offset="85%" stop-color="#252a3a" stop-opacity="0.06" />
-          <stop offset="100%" stop-color="#252a3a" stop-opacity="0" />
+        <radialGradient id="castG" cx="44%" cy="38%" rx="52%" ry="48%">
+          <stop offset="0%" stop-color="#0c0e14" stop-opacity="0.55" />
+          <stop offset="45%" stop-color="#181a24" stop-opacity="0.28" />
+          <stop offset="80%" stop-color="#242734" stop-opacity="0.08" />
+          <stop offset="100%" stop-color="#242734" stop-opacity="0" />
         </radialGradient>
       </defs>
-      <ellipse cx="${aoW / 2}" cy="${aoH / 2}" rx="${aoW * 0.49}" ry="${aoH * 0.48}" fill="url(#aoGrad)" />
+      <ellipse cx="${castW * 0.52}" cy="${castH * 0.48}" rx="${castW * 0.46}" ry="${castH * 0.44}" fill="url(#castG)" />
     </svg>
   `;
-
-  const aoShadowBuf = await sharp(Buffer.from(aoSvg))
-    .blur(14)
+  const castShadowBuf = await sharp(Buffer.from(castSvg))
+    .blur(8.5)
     .png()
     .toBuffer();
 
-  void alphaResized; // Reference retained for custom silhouette projections if needed
+  // 3. Ambient penumbra: broad soft diffuse light falloff on the studio floor
+  const penumbraW = Math.max(32, Math.round(scaledW * 1.35));
+  const penumbraH = Math.max(16, Math.round(scaledH * 0.28));
+
+  const penumbraSvg = `
+    <svg width="${penumbraW}" height="${penumbraH}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="penumbraG" cx="50%" cy="50%" rx="50%" ry="50%">
+          <stop offset="0%" stop-color="#141720" stop-opacity="0.25" />
+          <stop offset="50%" stop-color="#1a1d28" stop-opacity="0.12" />
+          <stop offset="85%" stop-color="#242734" stop-opacity="0.03" />
+          <stop offset="100%" stop-color="#242734" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+      <ellipse cx="${penumbraW / 2}" cy="${penumbraH / 2}" rx="${penumbraW * 0.48}" ry="${penumbraH * 0.47}" fill="url(#penumbraG)" />
+    </svg>
+  `;
+  const penumbraBuf = await sharp(Buffer.from(penumbraSvg))
+    .blur(18)
+    .png()
+    .toBuffer();
 
   return {
     contactShadow: {
       input: contactShadowBuf,
-      left: 0, // Assigned relative to product positioning
-      top: 0,
+      topOffset: -Math.round(contactH * 0.5),
     },
-    ambientOcclusion: {
-      input: aoShadowBuf,
-      left: 0,
-      top: 0,
+    castShadow: {
+      input: castShadowBuf,
+      leftOffset: Math.round(scaledW * 0.05),
+      topOffset: -Math.round(castH * 0.25),
+    },
+    ambientPenumbra: {
+      input: penumbraBuf,
+      topOffset: -Math.round(penumbraH * 0.35),
     },
   };
+}
+
+/**
+ * Applies subtle warm studio ambient color bounce to lower edge of product.
+ * Mimics physical light bounce from beige travertine / warm floor podium.
+ */
+async function applyAmbientColorBounce(
+  productBuffer: Buffer,
+  scaledW: number,
+  scaledH: number
+): Promise<Buffer> {
+  const bounceSvg = `
+    <svg width="${scaledW}" height="${scaledH}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bounceGrad" x1="0%" y1="100%" x2="0%" y2="70%">
+          <stop offset="0%" stop-color="#d8cebf" stop-opacity="0.30" />
+          <stop offset="50%" stop-color="#e8decb" stop-opacity="0.12" />
+          <stop offset="100%" stop-color="#e8decb" stop-opacity="0.0" />
+        </linearGradient>
+      </defs>
+      <rect width="${scaledW}" height="${scaledH}" fill="url(#bounceGrad)" />
+    </svg>
+  `;
+
+  return sharp(productBuffer)
+    .composite([
+      {
+        input: Buffer.from(bounceSvg),
+        blend: "soft-light",
+      },
+    ])
+    .png()
+    .toBuffer();
 }
 
 /**
  * Composites the authoritative raw product cutout onto a generated or procedural plate.
  *
  * Rules:
- * 1. Raw product pixels are preserved without alteration (only proportional lanczos3 resize).
- * 2. Contact shadow and ambient occlusion are generated and positioned beneath the product.
+ * 1. Raw product pixels are preserved without alteration (only proportional lanczos3 resize + ambient bounce).
+ * 2. Multi-layer contact, directional cast, and ambient shadows are positioned beneath the product.
  * 3. Product scale is strictly 55–70% of frame height (fixed anchor on lower third ground plane).
  */
 export async function compositeProductOnPlate(options: CompositeProductOptions): Promise<Buffer> {
@@ -271,27 +326,39 @@ export async function compositeProductOnPlate(options: CompositeProductOptions):
     posY = minTop;
   }
 
-  // 5. Generate contact shadow and ambient occlusion
-  const shadows = await generateShadowLayers(productResized, scaledW, scaledH);
+  // 5. Apply subtle warm ambient color bounce to ground product into studio scene
+  const productIntegrated = await applyAmbientColorBounce(productResized, scaledW, scaledH);
 
-  // Align shadow center with product base
+  // 6. Generate multi-layer shadows (Ambient Penumbra -> Cast Shadow -> Contact Shadow)
+  const shadows = await generateMultiLayerShadows(scaledW, scaledH);
   const shadowCenterBottomY = posY + scaledH;
+
+  const penumbraMeta = await sharp(shadows.ambientPenumbra.input).metadata();
+  const castMeta = await sharp(shadows.castShadow.input).metadata();
   const contactMeta = await sharp(shadows.contactShadow.input).metadata();
-  const aoMeta = await sharp(shadows.ambientOcclusion.input).metadata();
+
+  const penumbraLeft = Math.round(posX + (scaledW - (penumbraMeta.width || 0)) / 2);
+  const penumbraTop = Math.round(shadowCenterBottomY + shadows.ambientPenumbra.topOffset);
+
+  const castLeft = Math.round(posX + (scaledW - (castMeta.width || 0)) / 2 + shadows.castShadow.leftOffset);
+  const castTop = Math.round(shadowCenterBottomY + shadows.castShadow.topOffset);
 
   const contactLeft = Math.round(posX + (scaledW - (contactMeta.width || 0)) / 2);
-  const contactTop = Math.round(shadowCenterBottomY - (contactMeta.height || 0) * 0.55);
+  const contactTop = Math.round(shadowCenterBottomY + shadows.contactShadow.topOffset);
 
-  const aoLeft = Math.round(posX + (scaledW - (aoMeta.width || 0)) / 2);
-  const aoTop = Math.round(shadowCenterBottomY - (aoMeta.height || 0) * 0.50);
-
-  // 6. Final Multi-layer Composite:
-  // Background Plate -> Ambient Occlusion -> Contact Shadow -> Authentic Product Cutout
+  // 7. Final Multi-layer Composite:
+  // Background Plate -> Ambient Penumbra -> Directional Cast Shadow -> Contact Occlusion -> Authentic Integrated Product
   const compositeLayers: OverlayOptions[] = [
     {
-      input: shadows.ambientOcclusion.input,
-      left: Math.max(0, Math.min(plateW - (aoMeta.width || 0), aoLeft)),
-      top: Math.max(0, Math.min(plateH - (aoMeta.height || 0), aoTop)),
+      input: shadows.ambientPenumbra.input,
+      left: Math.max(0, Math.min(plateW - (penumbraMeta.width || 0), penumbraLeft)),
+      top: Math.max(0, Math.min(plateH - (penumbraMeta.height || 0), penumbraTop)),
+      blend: "over",
+    },
+    {
+      input: shadows.castShadow.input,
+      left: Math.max(0, Math.min(plateW - (castMeta.width || 0), castLeft)),
+      top: Math.max(0, Math.min(plateH - (castMeta.height || 0), castTop)),
       blend: "over",
     },
     {
@@ -301,7 +368,7 @@ export async function compositeProductOnPlate(options: CompositeProductOptions):
       blend: "over",
     },
     {
-      input: productResized,
+      input: productIntegrated,
       left: posX,
       top: posY,
       blend: "over",

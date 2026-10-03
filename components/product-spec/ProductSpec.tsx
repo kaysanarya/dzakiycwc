@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { ProductCategory } from "@/types";
-import { CheckCircle2, ChevronDown, Sparkles } from "lucide-react";
+import { CheckCircle2, ChevronDown } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface ProductSpecProps {
@@ -62,12 +62,12 @@ export function ProductSpec({
       <div className="p-3 rounded-lg card-flat-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         {/* Read-Only Detection Chip */}
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-emerald-950/80 border border-emerald-800 flex items-center justify-center text-emerald-400 shrink-0">
-            <CheckCircle2 className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
+            <CheckCircle2 className="w-4 h-4 text-zinc-400" />
           </div>
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800 text-emerald-300 font-medium text-xs">
-              <Sparkles className="w-3 h-3 text-emerald-400" />
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <span>{language === "id" ? `Terdeteksi: ${getAutoDetectedName()}` : `Detected: ${getAutoDetectedName()}`}</span>
             </div>
             <p className="text-[11px] text-zinc-400 mt-0.5 font-normal">
@@ -92,7 +92,7 @@ export function ProductSpec({
 
       {/* Simple Category Dropdown when Correct is clicked */}
       {isEditing && (
-        <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-700 space-y-2">
+        <div className="p-3 rounded-lg bg-zinc-900 border border-zinc-800 space-y-2">
           <label className="block text-xs font-semibold text-zinc-200">
             {language === "id" ? "Pilih Kategori Sebenarnya:" : "Select Actual Category:"}
           </label>
@@ -109,12 +109,12 @@ export function ProductSpec({
                   }}
                   className={`p-2 rounded-md text-left text-xs font-medium border transition-colors cursor-pointer flex items-center justify-between ${
                     isSelected
-                      ? "bg-blue-600 text-white border-blue-500"
-                      : "bg-zinc-800/80 text-zinc-300 hover:text-white border-zinc-700 hover:bg-zinc-800"
+                      ? "bg-zinc-100 text-zinc-950 font-semibold border-zinc-200 shadow-sm"
+                      : "bg-zinc-900/80 text-zinc-300 hover:text-white border-zinc-800 hover:bg-zinc-800"
                   }`}
                 >
                   <span>{language === "id" ? opt.labelId : opt.labelEn}</span>
-                  {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                  {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-zinc-950" />}
                 </button>
               );
             })}

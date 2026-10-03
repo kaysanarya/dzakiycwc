@@ -44,7 +44,7 @@ export function BlueprintModal({ blueprint, isOpen, onClose }: BlueprintModalPro
                 <h3 className="text-sm font-semibold text-zinc-100">
                   {t.blueprintModal.title}
                 </h3>
-                <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
                   {t.blueprintModal.confidence} {Math.round(blueprint.confidence * 100)}%
                 </span>
               </div>
@@ -61,7 +61,7 @@ export function BlueprintModal({ blueprint, isOpen, onClose }: BlueprintModalPro
                 onClick={() => setActiveTab("structured")}
                 className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
                   activeTab === "structured"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-zinc-800 text-zinc-100 shadow-sm"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
@@ -72,7 +72,7 @@ export function BlueprintModal({ blueprint, isOpen, onClose }: BlueprintModalPro
                 onClick={() => setActiveTab("json")}
                 className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
                   activeTab === "json"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-zinc-800 text-zinc-100 shadow-sm"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >

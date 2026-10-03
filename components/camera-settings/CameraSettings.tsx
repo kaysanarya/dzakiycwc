@@ -130,8 +130,8 @@ export function CameraSettings({
                 }
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
                   isSelected
-                    ? "bg-blue-950/40 border-blue-500 text-blue-100 ring-1 ring-blue-500"
-                    : "bg-zinc-900/60 hover:bg-zinc-800/80 border-zinc-800 text-zinc-300"
+                    ? "bg-zinc-800/90 border-zinc-500 text-zinc-100 ring-1 ring-zinc-500/80 shadow-xs"
+                    : "bg-zinc-900/50 hover:bg-zinc-800/60 border-zinc-800/80 text-zinc-400 hover:text-zinc-200"
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
@@ -139,14 +139,14 @@ export function CameraSettings({
                     className={`w-5 h-5 rounded border shadow-inner shrink-0 ${preset.previewClass}`}
                   />
                   {isSelected && (
-                    <Check className="w-3.5 h-3.5 text-blue-400 stroke-[3]" />
+                    <Check className="w-3.5 h-3.5 text-zinc-200 stroke-[2.5]" />
                   )}
                 </div>
                 <div>
-                  <span className="text-xs font-semibold block truncate">
+                  <span className={`text-xs font-semibold block truncate ${isSelected ? "text-zinc-100" : "text-zinc-300"}`}>
                     {language === "id" ? preset.nameId : preset.nameEn}
                   </span>
-                  <span className="text-[10px] text-zinc-400 block truncate">
+                  <span className="text-[10px] text-zinc-500 block truncate">
                     {language === "id" ? preset.descId : preset.descEn}
                   </span>
                 </div>
@@ -177,12 +177,12 @@ export function CameraSettings({
                 }
                 className={`py-2 px-1 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                   isSelected
-                    ? "bg-blue-600 text-white border-blue-500"
-                    : "bg-zinc-900/60 text-zinc-300 hover:bg-zinc-800 border-zinc-800"
+                    ? "bg-zinc-100 text-zinc-950 font-bold border-zinc-200 shadow-xs"
+                    : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/80 border-zinc-800"
                 }`}
               >
                 <span className="text-xs font-mono font-bold">{item.name}</span>
-                <span className={`text-[9px] truncate max-w-full font-medium ${isSelected ? "text-white" : "text-zinc-400"}`}>
+                <span className={`text-[9px] truncate max-w-full font-medium ${isSelected ? "text-zinc-800" : "text-zinc-500"}`}>
                   {language === "id" ? item.descId : item.descEn}
                 </span>
               </button>

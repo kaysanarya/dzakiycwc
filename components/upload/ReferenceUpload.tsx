@@ -83,19 +83,19 @@ export function ReferenceUpload({
     <div className="space-y-3 pt-2">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <div>
-          <h3 className="text-sm font-bold text-white tracking-tight uppercase flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-zinc-200 tracking-tight flex items-center gap-2">
             <span>{language === "id" ? "Foto Referensi (Opsional)" : "Reference Photos (Optional)"}</span>
-            <span className="text-[10px] font-semibold text-[#3781fc] bg-[#1951fc]/20 px-2 py-0.5 rounded-full border border-white/[0.08]">
+            <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
               Style Only
             </span>
           </h3>
-          <p className="text-xs text-white/70 mt-0.5 font-medium">
+          <p className="text-xs text-zinc-400 mt-0.5 font-normal">
             {language === "id"
               ? "Referensi hanya digunakan untuk style fotografi. Identitas produk tetap mengikuti foto mentahan."
               : "References are used for photography style only. Product identity strictly follows raw photos."}
           </p>
         </div>
-        <span className="text-xs font-semibold text-[#3781fc] self-start sm:self-auto bg-white/[0.05] px-2.5 py-1 rounded-full border border-white/[0.08]">
+        <span className="text-xs font-mono text-zinc-400 self-start sm:self-auto bg-zinc-900 px-2.5 py-1 rounded border border-zinc-800">
           {references.length} {language === "id" ? "referensi" : references.length === 1 ? "reference" : "references"}
         </span>
       </div>
@@ -125,7 +125,7 @@ export function ReferenceUpload({
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
         className={`border border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors ${dragActive
-            ? "border-blue-500 bg-blue-950/30"
+            ? "border-zinc-400 bg-zinc-800/40"
             : "border-zinc-700 hover:border-zinc-500 bg-zinc-900/50 hover:bg-zinc-900"
           }`}
       >
@@ -178,7 +178,7 @@ export function ReferenceUpload({
                   </button>
 
                   {isBgRemoved && (
-                    <div className="absolute top-1.5 left-1.5 bg-blue-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                    <div className="absolute top-1.5 left-1.5 bg-zinc-900/90 text-zinc-300 border border-zinc-700 text-[9px] font-mono px-1.5 py-0.5 rounded">
                       BG Filtered
                     </div>
                   )}
@@ -190,7 +190,7 @@ export function ReferenceUpload({
                     type="button"
                     onClick={() => toggleRemoveBg(ref.id)}
                     className={`flex-1 py-1 px-2 text-[10px] font-medium rounded border transition-colors flex items-center justify-center gap-1 cursor-pointer ${isBgRemoved
-                        ? "bg-blue-600 text-white border-blue-500"
+                        ? "bg-zinc-100 text-zinc-950 font-semibold border-zinc-200"
                         : "btn-secondary"
                       }`}
                     title="Abaikan background referensi agar fokus pada pencahayaan produk"
@@ -203,7 +203,7 @@ export function ReferenceUpload({
                     type="button"
                     onClick={() => toggleUseAngle(ref.id)}
                     className={`flex-1 py-1 px-2 text-[10px] font-medium rounded border transition-colors flex items-center justify-center gap-1 cursor-pointer ${isUsingAngle
-                        ? "bg-blue-600 text-white border-blue-500"
+                        ? "bg-zinc-100 text-zinc-950 font-semibold border-zinc-200"
                         : "btn-secondary"
                       }`}
                     title="Gunakan sudut kamera dari referensi ini"

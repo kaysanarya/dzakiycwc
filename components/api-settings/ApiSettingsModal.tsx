@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { KeyRound, Eye, EyeOff, Save, Trash2, CheckCircle2, AlertTriangle, ExternalLink } from "lucide-react";
+import { KeyRound, Eye, EyeOff, Save, Trash2, CheckCircle2, ExternalLink } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export type AIProviderType = "openai" | "stability" | "replicate" | "gemini";
@@ -154,8 +154,8 @@ export function ApiSettingsModal({
 
         {/* Current status banner */}
         {currentCredentials?.apiKey ? (
-          <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2.5 text-xs text-emerald-300">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center gap-2.5 text-xs text-zinc-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
             <span className="font-medium leading-relaxed">
               {language === "id"
                 ? `Terhubung ke ${PROVIDERS_INFO[currentCredentials.provider].name}. Siap generate foto komersial nyata!`
@@ -163,13 +163,13 @@ export function ApiSettingsModal({
             </span>
           </div>
         ) : (
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2.5 text-xs">
-            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 flex items-start gap-2.5 text-xs">
+            <span className="w-2 h-2 rounded-full bg-amber-400/80 shrink-0 mt-1" />
             <div>
-              <p className="font-bold text-amber-300">
+              <p className="font-semibold text-zinc-200">
                 {language === "id" ? "Mode Demo Aktif" : "Demo Mode Active"}
               </p>
-              <p className="text-[11px] text-amber-200/90 mt-0.5 font-medium leading-relaxed">
+              <p className="text-[11px] text-zinc-400 mt-0.5 font-normal leading-relaxed">
                 {language === "id"
                   ? "Tanpa API Key, studio berjalan dalam mode simulasi cerdas (foto demo resolusi tinggi). Masukkan API Key di bawah ini untuk menghasilkan foto unik dari produk Anda sendiri."
                   : "Without an API key, the studio runs in smart demo mode with high-resolution pre-rendered studio shots. Enter your API key below to generate unique live photos."}
@@ -179,37 +179,37 @@ export function ApiSettingsModal({
         )}
 
         <form onSubmit={handleSave} className="space-y-4">
-          {/* Provider Selector (Requirement 2: Dropdown OpenAI DALL-E 3, Stability AI, Replicate) */}
+          {/* Provider Selector */}
           <div>
-            <label className="block text-xs font-bold text-white mb-1.5">
+            <label className="block text-xs font-semibold text-zinc-200 mb-1.5">
               {language === "id" ? "Pilih Provider AI Visual:" : "Select AI Visual Provider:"}
             </label>
             <select
               value={provider}
               onChange={(e) => setProvider(e.target.value as AIProviderType)}
-              className="w-full text-xs font-semibold text-white bg-[#131726] border border-white/[0.12] rounded-xl px-3.5 py-2.5 focus:border-[#3781fc] focus:outline-none focus:ring-1 focus:ring-[#3781fc] cursor-pointer shadow-inner transition-colors"
+              className="w-full text-xs font-semibold text-zinc-100 bg-zinc-900 border border-zinc-800 rounded-lg px-3.5 py-2.5 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 cursor-pointer shadow-sm transition-colors"
             >
-              <option value="openai" className="bg-[#131726] text-white py-1">OpenAI — DALL-E 3 (Direkomendasikan)</option>
-              <option value="stability" className="bg-[#131726] text-white py-1">Stability AI — Stable Diffusion 3 / Core</option>
-              <option value="replicate" className="bg-[#131726] text-white py-1">Replicate — Flux Schnell / SDXL</option>
-              <option value="gemini" className="bg-[#131726] text-white py-1">Google AI Studio — Imagen 3 / Gemini</option>
+              <option value="openai" className="bg-zinc-900 text-zinc-100 py-1">OpenAI — DALL-E 3 (Direkomendasikan)</option>
+              <option value="stability" className="bg-zinc-900 text-zinc-100 py-1">Stability AI — Stable Diffusion 3 / Core</option>
+              <option value="replicate" className="bg-zinc-900 text-zinc-100 py-1">Replicate — Flux Schnell / SDXL</option>
+              <option value="gemini" className="bg-zinc-900 text-zinc-100 py-1">Google AI Studio — Imagen 3 / Gemini</option>
             </select>
-            <p className="text-[11px] text-white/70 mt-1.5 font-medium leading-relaxed">
+            <p className="text-[11px] text-zinc-400 mt-1.5 font-normal leading-relaxed">
               {activeProvider.desc}
             </p>
           </div>
 
-          {/* API Key Input (Requirement 2: Tipe password disamarkan) */}
+          {/* API Key Input */}
           <div>
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <label className="font-bold text-white">
+              <label className="font-semibold text-zinc-200">
                 API Key {activeProvider.name}:
               </label>
               <a
                 href={activeProvider.getKeyUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-[#3781fc] hover:text-[#cbe9fd] hover:underline font-semibold inline-flex items-center gap-1 text-[11px] transition-colors"
+                className="text-zinc-400 hover:text-white hover:underline font-medium inline-flex items-center gap-1 text-[11px] transition-colors"
               >
                 <span>Dapatkan API Key</span>
                 <ExternalLink className="w-3 h-3" />
@@ -222,52 +222,52 @@ export function ApiSettingsModal({
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={activeProvider.placeholder}
-                className="w-full text-xs font-mono font-medium text-white placeholder:text-white/35 bg-[#131726] border border-white/[0.12] rounded-xl px-3.5 py-2.5 pr-10 focus:border-[#3781fc] focus:outline-none focus:ring-1 focus:ring-[#3781fc] shadow-inner transition-colors"
+                className="w-full text-xs font-mono font-medium text-zinc-100 placeholder:text-zinc-600 bg-zinc-900 border border-zinc-800 rounded-lg px-3.5 py-2.5 pr-10 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 shadow-sm transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white cursor-pointer transition-colors p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 cursor-pointer transition-colors p-1"
                 title={showKey ? "Sembunyikan" : "Tampilkan"}
               >
                 {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            {/* Remember on Device Checkbox (Rule 7) */}
+            {/* Remember on Device Checkbox */}
             <div className="pt-2">
               <label className="flex items-start gap-2.5 cursor-pointer text-xs select-none">
                 <input
                   type="checkbox"
                   checked={rememberOnDevice}
                   onChange={(e) => setRememberOnDevice(e.target.checked)}
-                  className="mt-0.5 rounded border-white/20 bg-[#131726] text-[#1951fc] focus:ring-0 cursor-pointer"
+                  className="mt-0.5 rounded border-zinc-700 bg-zinc-900 text-zinc-100 focus:ring-0 cursor-pointer accent-zinc-200"
                 />
                 <div>
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-zinc-200">
                     {language === "id" ? "Ingat di perangkat ini" : "Remember on this device"}
                   </span>
-                  <p className="text-[11px] text-white/60 mt-0.5 leading-snug">
+                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">
                     {language === "id"
                       ? "Secara default, key hanya disimpan untuk sesi browser ini (sessionStorage). Centang untuk menyimpan permanen di browser ini (localStorage)."
                       : "By default, key is stored only for this browser session (sessionStorage). Check to store permanently on this device (localStorage)."}
-                    <span className="text-amber-400 block mt-0.5 font-medium">
+                    <span className="text-amber-400/90 block mt-0.5 font-medium">
                       ⚠️ {language === "id" ? "Peringatan: Jangan centang bila menggunakan komputer publik atau bersama." : "Warning: Do not check on public or shared computers."}
                     </span>
                   </p>
                 </div>
               </label>
             </div>
-            <p className="text-[10px] text-white/50 mt-1 font-medium italic">
+            <p className="text-[10px] text-zinc-500 mt-1 font-mono">
               *Key dikirim hanya via header (x-api-key) dan tidak pernah disimpan di server.
             </p>
           </div>
 
           {/* Form Actions */}
-          <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between gap-3">
+          <div className="pt-3 border-t border-zinc-800 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={handleClear}
-              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-white/70 hover:text-red-400 hover:bg-red-500/10 border border-white/[0.08] hover:border-red-500/30 transition-all cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-rose-400 hover:bg-zinc-900 border border-zinc-800 transition-all cursor-pointer flex items-center gap-1.5"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Gunakan Demo Mode (Hapus Key)</span>
@@ -275,11 +275,11 @@ export function ApiSettingsModal({
 
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#1951fc] hover:bg-[#1447db] text-white text-xs font-bold transition-all shadow-[0_2px_12px_rgba(25,81,252,0.4)] hover:shadow-[0_4px_16px_rgba(25,81,252,0.5)] flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="btn-primary h-9 px-5 text-xs font-semibold gap-1.5"
             >
               {saveSuccess ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>Tersimpan!</span>
                 </>
               ) : (

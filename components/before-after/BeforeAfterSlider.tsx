@@ -104,7 +104,7 @@ export function BeforeAfterSlider({
         alt="Hasil Studio AI"
         className="absolute inset-0 w-full h-full object-contain pointer-events-none p-2"
       />
-      <div className="absolute top-3 right-3 bg-zinc-900/90 border border-zinc-700 text-zinc-100 text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-md shadow-xs">
+      <div className="absolute top-3 right-3 bg-zinc-950/90 backdrop-blur-md border border-zinc-800 text-zinc-300 text-[11px] font-mono tracking-wider uppercase px-2.5 py-1 rounded-md shadow-md">
         {generatedLabel}
       </div>
 
@@ -120,18 +120,18 @@ export function BeforeAfterSlider({
           className="absolute inset-0 w-full h-full object-contain p-2 max-w-none"
           style={{ width: containerWidth ? `${containerWidth}px` : "100%" }}
         />
-        <div className="absolute top-3 left-3 bg-blue-600/90 border border-blue-400 text-white text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-md shadow-xs">
+        <div className="absolute top-3 left-3 bg-zinc-950/90 backdrop-blur-md border border-zinc-800 text-zinc-300 text-[11px] font-mono tracking-wider uppercase px-2.5 py-1 rounded-md shadow-md">
           {sourceLabel}
         </div>
       </div>
 
       {/* Divider Line & Handle */}
       <div
-        className="absolute inset-y-0 w-0.5 bg-white pointer-events-none"
+        className="absolute inset-y-0 w-px bg-zinc-400/90 pointer-events-none shadow-[0_0_8px_rgba(255,255,255,0.4)]"
         style={{ left: `${sliderPosition}%` }}
       >
-        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-zinc-900 border border-zinc-500 flex items-center justify-center text-white shadow-md">
-          <Sliders className="w-3.5 h-3.5" />
+        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-zinc-900 border border-zinc-600 flex items-center justify-center text-zinc-300 shadow-xl shadow-black/80 hover:scale-105 transition-transform">
+          <Sliders className="w-3 h-3 text-zinc-400" />
         </div>
       </div>
     </div>

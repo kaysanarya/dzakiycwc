@@ -152,12 +152,12 @@ export function ProductSourceUpload({
           }}
           className={`w-full aspect-[4/3] max-h-[360px] border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors select-none ${
             dragActive
-              ? "border-blue-500 bg-blue-950/20"
+              ? "border-zinc-400 bg-zinc-800/40"
               : "border-zinc-700 hover:border-zinc-500 bg-zinc-900/40 hover:bg-zinc-900/60"
           }`}
         >
           <div className="w-14 h-14 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 mb-4">
-            <Upload className="w-7 h-7 text-blue-400" />
+            <Upload className="w-7 h-7 text-zinc-300" />
           </div>
 
           <h2 className="text-base font-semibold text-zinc-100 max-w-md">
@@ -234,7 +234,7 @@ export function ProductSourceUpload({
         }}
         className={`border border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors ${
           dragActive
-            ? "border-blue-500 bg-blue-950/30"
+            ? "border-zinc-400 bg-zinc-800/40"
             : "border-zinc-700 hover:border-zinc-500 bg-zinc-900/50 hover:bg-zinc-900"
         }`}
       >

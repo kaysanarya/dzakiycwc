@@ -56,7 +56,7 @@ export function AgentMonitor({
             aria-label="Lihat blueprint produk"
             className="btn-secondary h-7 px-2.5 text-xs gap-1.5"
           >
-            <FileCode2 className="w-3.5 h-3.5 text-blue-400" />
+            <FileCode2 className="w-3.5 h-3.5 text-zinc-400" />
             <span>{t.agentMonitor.viewBlueprint}</span>
           </button>
         )}
@@ -91,12 +91,12 @@ export function AgentMonitor({
                   key={step.id}
                   className={`p-3 rounded-lg border transition-colors ${
                     isRunning
-                      ? "bg-blue-950/30 border-blue-600/50"
+                      ? "bg-zinc-900/90 border-zinc-600 shadow-sm"
                       : isCompleted
-                      ? "bg-zinc-900/60 border-zinc-800"
+                      ? "bg-zinc-900/40 border-zinc-800"
                       : isFailed
                       ? "bg-red-950/30 border-red-800/60"
-                      : "bg-zinc-900/30 border-zinc-800/60 opacity-60"
+                      : "bg-zinc-900/20 border-zinc-800/50 opacity-50"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -104,10 +104,10 @@ export function AgentMonitor({
                       {/* Step Indicator */}
                       <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold shrink-0">
                         {isRunning && (
-                          <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                          <Loader2 className="w-4 h-4 text-zinc-200 animate-spin" />
                         )}
                         {isCompleted && (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <CheckCircle2 className="w-4 h-4 text-zinc-400" />
                         )}
                         {isFailed && (
                           <AlertCircle className="w-4 h-4 text-red-400" />
@@ -121,7 +121,7 @@ export function AgentMonitor({
 
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className={`text-xs font-medium ${isFailed ? "text-red-300" : "text-zinc-200"}`}>
+                          <span className={`text-xs font-medium ${isFailed ? "text-red-300" : isRunning ? "text-white font-semibold" : "text-zinc-200"}`}>
                             {t.agentMonitor.stepLabel} {idx + 1}: {step.title}
                           </span>
                         </div>
@@ -132,14 +132,14 @@ export function AgentMonitor({
                     </div>
 
                     {/* Step Status Badge */}
-                    <div className="shrink-0 text-[10px] font-medium">
+                    <div className="shrink-0 text-[10px] font-mono">
                       {isRunning && (
-                        <span className="px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">
+                        <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-200 border border-zinc-700 font-semibold">
                           {t.agentMonitor.running}
                         </span>
                       )}
                       {isCompleted && (
-                        <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                        <span className="px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
                           {t.agentMonitor.completed}
                         </span>
                       )}

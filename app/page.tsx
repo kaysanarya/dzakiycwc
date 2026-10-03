@@ -45,12 +45,10 @@ import {
   RotateCcw,
   Sparkles,
   Layers,
-  CheckCircle2,
-  HelpCircle,
-  Info,
   Clock,
   KeyRound,
   Sliders,
+  Camera,
 } from "lucide-react";
 
 const getInitialSteps = (language: "en" | "id"): AgentStep[] => [
@@ -705,38 +703,39 @@ export default function Home() {
       out.imageUrl.includes("/demo/") ||
       out.imageUrl.endsWith(".svg");
 
-    if (isDemo) {
-      return (
-        <span
-          title="Hasil menggunakan simulasi demo"
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-950/70 border border-purple-800 text-purple-300 whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
-        >
-          <Info className="w-3 h-3 shrink-0" />
-          <span className="truncate">Demo</span>
-        </span>
-      );
-    }
-
-    if (out.validation && out.validation.score && out.validation.score >= 80) {
-      return (
-        <span
-          title="Kesesuaian produk terverifikasi"
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-950/70 border border-emerald-800 text-emerald-300 whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
-        >
-          <CheckCircle2 className="w-3 h-3 shrink-0" />
-          <span className="truncate">Hasil AI</span>
-        </span>
-      );
-    }
+    const bgLabelMap: Record<string, string> = {
+      studio_beige: "Softbox Diffused",
+      studio_white: "High-Key Diffused",
+      lifestyle: "Architectural Ambient",
+      outdoor_street: "Natural Daylight",
+      dark_moody: "Low-Key Dramatic",
+      pastel_studio: "Pastel Fill",
+    };
+    const lightingPreset = bgLabelMap[direction.background] || "Softbox Diffused";
+    const resString =
+      direction.aspectRatio === "4:5"
+        ? "1024 × 1280 px"
+        : direction.aspectRatio === "16:9"
+        ? "1280 × 720 px"
+        : direction.aspectRatio === "9:16"
+        ? "720 × 1280 px"
+        : "1024 × 1024 px";
 
     return (
-      <span
-        title="Belum diverifikasi secara otomatis"
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-zinc-800 border border-zinc-700 text-zinc-300 whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
-      >
-        <HelpCircle className="w-3 h-3 shrink-0" />
-        <span className="truncate">Belum diverifikasi</span>
-      </span>
+      <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-[11px] shadow-sm">
+        <Camera className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+        <span className="text-zinc-200 font-medium">{resString}</span>
+        <span className="text-zinc-600">•</span>
+        <span className="text-zinc-400">Aspect {direction.aspectRatio}</span>
+        <span className="text-zinc-600">•</span>
+        <span className="text-zinc-400">{lightingPreset}</span>
+        {isDemo && (
+          <>
+            <span className="text-zinc-600">•</span>
+            <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 text-[10px]">Demo</span>
+          </>
+        )}
+      </div>
     );
   };
 
@@ -745,7 +744,14 @@ export default function Home() {
       {/* Top Header */}
       <Header
         onLoadDemoProduct={handleLoadDemoProduct}
-        onOpenHistory={() => setIsHistoryDrawerOpen(true)}
+        onOpenHistory={() => {
+          if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+            setIsRightSidebarOpen((prev) => !prev);
+          } else {
+            setIsHistoryDrawerOpen(true);
+          }
+        }}
+        isHistoryOpen={isRightSidebarOpen}
         onOpenApiSettings={() => setIsApiSettingsOpen(true)}
         hasApiKey={Boolean(apiCredentials?.apiKey)}
         activeProviderName={apiCredentials?.provider}
@@ -841,7 +847,7 @@ export default function Home() {
                               onClick={() => setGenerationCount(count)}
                               className={`py-1.5 px-2 rounded-md border text-xs font-semibold transition-colors cursor-pointer ${
                                 generationCount === count
-                                  ? "bg-blue-600 text-white border-blue-500"
+                                  ? "bg-zinc-100 text-zinc-950 font-medium border-zinc-200 shadow-sm"
                                   : "bg-zinc-900 text-zinc-400 hover:text-white border-zinc-800"
                               }`}
                             >
@@ -872,12 +878,15 @@ export default function Home() {
           {/* 4. Tombol Utama "Buat foto" (Sticky di bawah panel kiri) */}
           <div className="p-3 border-t border-zinc-800 bg-zinc-950/95 sticky bottom-0 z-10 space-y-2">
             {!apiCredentials?.apiKey && sourceImages.length > 0 && (
-              <div className="p-2 rounded bg-amber-950/40 border border-amber-800/60 text-[11px] text-amber-300 flex items-center justify-between">
-                <span>{language === "id" ? "Mode Demo" : "Demo Mode"}</span>
+              <div className="p-2 rounded bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400/80" />
+                  <span>{language === "id" ? "Mode Demo" : "Demo Mode"}</span>
+                </div>
                 <button
                   type="button"
                   onClick={() => setIsApiSettingsOpen(true)}
-                  className="font-medium underline hover:text-amber-200 cursor-pointer"
+                  className="font-medium text-zinc-300 hover:text-white underline cursor-pointer"
                 >
                   {language === "id" ? "Atur Key" : "Set Key"}
                 </button>
@@ -905,7 +914,7 @@ export default function Home() {
         {/* ========================================================= */}
         {/* CENTER CANVAS: Results are the center of the screen       */}
         {/* ========================================================= */}
-        <main className="flex-1 flex flex-col lg:h-[calc(100vh-53px)] overflow-y-auto p-4 lg:p-6 bg-zinc-950/50">
+        <main className="flex-1 flex flex-col min-h-0 lg:h-[calc(100vh-53px)] overflow-y-auto p-4 lg:p-6 bg-zinc-950">
           {/* Error Notice */}
           {errorMessage && (
             <div className="mb-4 p-3 rounded-lg bg-red-950/50 border border-red-800 text-xs text-red-200 flex items-center justify-between">
@@ -958,7 +967,7 @@ export default function Home() {
                   onClick={handleLoadDemoProduct}
                   className="btn-secondary h-8 px-3 text-xs gap-1.5"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                  <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
                   <span>{language === "id" ? "Atau coba produk demo sepatu" : "Or try demo footwear"}</span>
                 </button>
               </div>
@@ -979,9 +988,9 @@ export default function Home() {
                       : "Evaluate product contour and isolation before AI generates the commercial studio backdrop."}
                   </p>
                 </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-300">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{language === "id" ? "Produk siap diproses" : "Product ready"}</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>{language === "id" ? "Produk Siap Diproses" : "Product Ready"}</span>
                 </div>
               </div>
 
@@ -1013,10 +1022,10 @@ export default function Home() {
                 <div className="card-flat overflow-hidden flex flex-col">
                   <div className="p-2.5 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/60">
                     <span className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-blue-400" />
+                      <Layers className="w-3.5 h-3.5 text-zinc-400" />
                       <span>{language === "id" ? "Potongan Produk (Mask)" : "Product Cutout (Mask)"}</span>
                     </span>
-                    <span className="text-[10px] text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800 font-medium">
+                    <span className="text-[10px] text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800 font-mono">
                       {language === "id" ? "Piksel Asli Terkunci" : "Authentic Pixels Locked"}
                     </span>
                   </div>
@@ -1076,14 +1085,11 @@ export default function Home() {
 
           {/* STATE 3: SETELAH GENERATE (Hero Before/After Slider Pusat Layar) */}
           {generatedOutputs.length > 0 && !isGenerating && (
-            <div className="flex-1 flex flex-col max-w-4xl w-full mx-auto space-y-4">
+            <div className="flex-1 flex flex-col min-h-0 max-w-4xl w-full mx-auto space-y-3">
               {/* Slider Header: Status & Direct Actions */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-zinc-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-zinc-800 shrink-0">
                 <div className="flex items-center gap-2">
                   {activeOutput && getStatusBadge(activeOutput)}
-                  <span className="text-xs text-zinc-400">
-                    {language === "id" ? "Perbandingan Foto Asli vs Studio AI" : "Original vs AI Studio Output"}
-                  </span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -1116,10 +1122,10 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Large Inline Before/After Slider */}
+              {/* Large Inline Before/After Slider in Workstation Matting Container */}
               {activeOutput && primarySourceImage && (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="w-full max-w-[620px]">
+                <div className="flex-1 flex items-center justify-center min-h-0 my-auto py-1">
+                  <div className="w-full max-w-[620px] p-2 sm:p-2.5 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 shadow-2xl shadow-black/60">
                     <BeforeAfterSlider
                       inline={true}
                       sourceUrl={primarySourceImage.dataUrl}
@@ -1131,37 +1137,45 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Output Variations Thumbnail Strip */}
+              {/* Output Variations Dock */}
               {generatedOutputs.length > 1 && (
-                <div className="space-y-1.5 pt-2 border-t border-zinc-800">
-                  <span className="text-xs font-semibold text-zinc-300 block">
-                    {language === "id" ? "Pilih Variasi Hasil:" : "Select Variation:"}
-                  </span>
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                    {generatedOutputs.map((out, idx) => {
-                      const isSelected = selectedOutputIndex === idx;
-                      return (
-                        <button
-                          key={out.id}
-                          type="button"
-                          onClick={() => setSelectedOutputIndex(idx)}
-                          aria-label={`Pilih variasi ${idx + 1}`}
-                          className={`relative w-16 h-16 rounded-lg overflow-hidden border p-1 bg-zinc-900 transition-colors shrink-0 cursor-pointer ${
-                            isSelected ? "border-blue-500 ring-2 ring-blue-500" : "border-zinc-800 hover:border-zinc-700"
-                          }`}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={out.imageUrl}
-                            alt={out.angle || `Variasi ${idx + 1}`}
-                            className="w-full h-full object-contain pointer-events-none"
-                          />
-                          <span className="absolute bottom-1 right-1 text-[9px] font-mono bg-zinc-950/80 px-1 rounded text-zinc-300">
-                            #{idx + 1}
-                          </span>
-                        </button>
-                      );
-                    })}
+                <div className="flex flex-col items-center justify-center pt-2 pb-1 shrink-0">
+                  <div className="inline-flex items-center gap-2.5 p-1.5 rounded-xl bg-zinc-900/70 border border-zinc-800/80 shadow-lg backdrop-blur-sm">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 pl-2 pr-1 select-none">
+                      {language === "id" ? "Variasi" : "Variations"}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {generatedOutputs.map((out, idx) => {
+                        const isSelected = selectedOutputIndex === idx;
+                        return (
+                          <button
+                            key={out.id}
+                            type="button"
+                            onClick={() => setSelectedOutputIndex(idx)}
+                            aria-label={`Pilih variasi ${idx + 1}`}
+                            className={`relative w-[60px] h-[60px] rounded-lg overflow-hidden border p-0.5 bg-zinc-950 transition-all shrink-0 cursor-pointer ${
+                              isSelected
+                                ? "border-zinc-300 ring-2 ring-zinc-300 ring-offset-2 ring-offset-zinc-950 shadow-md"
+                                : "border-zinc-800 hover:border-zinc-600 opacity-60 hover:opacity-100"
+                            }`}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={out.imageUrl}
+                              alt={out.angle || `Variasi ${idx + 1}`}
+                              className="w-full h-full object-contain pointer-events-none rounded"
+                            />
+                            <span
+                              className={`absolute bottom-1 right-1 text-[9px] font-mono px-1 rounded ${
+                                isSelected ? "bg-zinc-100 text-zinc-950 font-bold" : "bg-zinc-900/90 text-zinc-400"
+                              }`}
+                            >
+                              0{idx + 1}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1245,7 +1259,7 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={() => handleLoadHistoryItem(item)}
-                          className="text-blue-400 hover:text-blue-300 cursor-pointer"
+                          className="text-zinc-300 hover:text-white font-medium cursor-pointer"
                         >
                           {language === "id" ? "Lihat" : "View"}
                         </button>

@@ -75,7 +75,7 @@ export function HistoryDrawer({
                   <span className="text-xs font-semibold text-zinc-200 truncate max-w-[200px]">
                     {item.projectName}
                   </span>
-                  <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                  <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
                     {item.averageScore}% {language === "id" ? "Cocok" : "Match"}
                   </span>
                 </div>
@@ -115,7 +115,7 @@ export function HistoryDrawer({
                       onClose();
                     }}
                     aria-label={`Muat sesi ${item.projectName} ke ruang kerja`}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 cursor-pointer transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-300 hover:text-white cursor-pointer transition-colors"
                   >
                     <span>{language === "id" ? "Muat ke Ruang Kerja" : "Load into Workspace"}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
