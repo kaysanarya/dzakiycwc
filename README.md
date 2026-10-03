@@ -63,7 +63,7 @@ FINAL PRODUCT PHOTOS
 ### 2. Installation
 ```bash
 git clone <your-repo>
-cd dzakiycwc
+cd vellum-ai-agent
 npm install
 ```
 
