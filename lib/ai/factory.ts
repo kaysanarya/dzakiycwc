@@ -39,9 +39,9 @@ export function getAIProvider(options?: ProviderOptions): AIProvider {
   if (chosenProvider === "gemini") {
     return new GeminiAIProvider({
       apiKey,
-      visionModel: process.env.AI_VISION_MODEL || "gemini-2.0-flash",
-      imageModel: process.env.AI_IMAGE_MODEL || "imagen-3.0-generate-002",
-      validationModel: process.env.AI_VALIDATION_MODEL || "gemini-2.0-flash",
+      visionModel: process.env.AI_VISION_MODEL || "gemini-3.8-flash",
+      imageModel: process.env.AI_IMAGE_MODEL || "gemini-3.1-flash-image",
+      validationModel: process.env.AI_VALIDATION_MODEL || "gemini-3.8-flash",
     });
   }
 

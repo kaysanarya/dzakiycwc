@@ -32,9 +32,9 @@ export class GeminiAIProvider implements AIProvider {
     validationModel?: string;
   }) {
     this.apiKey = options.apiKey;
-    this.visionModel = options.visionModel || "gemini-2.0-flash";
-    this.imageModel = options.imageModel || "imagen-3.0-generate-002";
-    this.validationModel = options.validationModel || "gemini-2.0-flash";
+    this.visionModel = options.visionModel || "gemini-3.8-flash";
+    this.imageModel = options.imageModel || "gemini-3.1-flash-image";
+    this.validationModel = options.validationModel || "gemini-3.8-flash";
   }
 
   async analyzeProduct(input: AnalyzeProductInput): Promise<ProductBlueprint> {
@@ -250,8 +250,9 @@ Return JSON ONLY:
       // 1. Try Multimodal Gemini Image Generation with strict product lock prompt
       if (input.sourceImages && input.sourceImages.length > 0) {
         const multimodalModels = [
-          "gemini-2.0-flash-preview-image-generation",
-          "gemini-2.0-flash-exp",
+          "gemini-3.1-flash-image",
+          "gemini-2.5-flash-image",
+          "gemini-3-pro-image",
         ];
 
         for (const mmModel of multimodalModels) {

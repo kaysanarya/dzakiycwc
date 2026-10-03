@@ -28,7 +28,7 @@ export const MAX_BODY_SIZE_BYTES = 15 * 1024 * 1024;
 function isValidGeminiKey(key?: string): boolean {
   if (!key || key.trim().length < 10) return false;
   const k = key.trim().replace(/^["']|["']$/g, "");
-  return k.startsWith("AIza") && k.length >= 35;
+  return k.startsWith("AIza") || k.startsWith("AQ.") || (k.length >= 20 && !/\s/.test(k));
 }
 
 /**
